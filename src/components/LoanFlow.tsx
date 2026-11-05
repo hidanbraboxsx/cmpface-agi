@@ -538,18 +538,46 @@ export function LoanFlow() {
             subtitle="Suas informações foram recebidas e já estão na fila de atendimento prioritário."
           >
             {/* Bloco de aviso oficial com ícones vetoriais */}
-            <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5 text-left space-y-3">
+            <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5 text-left space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 shadow-sm">
                   <Phone className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-sm sm:text-base text-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      <Sparkles className="size-3" /> Fila Prioritária
+                    </span>
+                  </div>
+                  <h3 className="mt-1 font-bold text-sm sm:text-base text-foreground">
                     O gerente {managerName} entrará em contato com você
                   </h3>
-                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Você receberá uma mensagem direta no seu WhatsApp cadastrado (<strong>{phone}</strong>) para confirmar os detalhes e formalizar a liberação do seu crédito de <strong className="text-foreground">{result && brl(result.amount)}</strong>.
+                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                    Você receberá uma mensagem direta no seu WhatsApp para confirmar os detalhes e formalizar a liberação do seu crédito consignado.
                   </p>
+                </div>
+              </div>
+
+              {/* Destaque estruturado: WhatsApp e Valor Liberado */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="rounded-xl border border-emerald-500/20 bg-background/90 p-3 shadow-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-medium">
+                    <Phone className="size-3.5 text-emerald-600" />
+                    <span>WhatsApp Cadastrado</span>
+                  </div>
+                  <div className="mt-1 font-mono font-bold text-sm sm:text-base text-foreground tracking-tight">
+                    {phone}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 shadow-xs">
+                  <div className="flex items-center gap-1.5 text-emerald-700 text-[11px] font-medium">
+                    <Wallet className="size-3.5 text-emerald-700" />
+                    <span>Crédito Aprovado</span>
+                  </div>
+                  <div className="mt-1 font-bold text-sm sm:text-base text-emerald-700">
+                    {result && brl(result.amount)}
+                  </div>
                 </div>
               </div>
 

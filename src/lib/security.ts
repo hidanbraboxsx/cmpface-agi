@@ -1,5 +1,5 @@
 /**
- * Security Engine: WAF filters, In-Memory Rate Limiting, Threat Detection & Scanner Defenses.
+ * Security Engine: WAF filters, In-Memory Rate Limiting, Threat Detection, Port Scan Defenses & Camouflage.
  */
 
 type ClientRecord = {
@@ -32,15 +32,29 @@ export type RateLimitOptions = {
 };
 
 /**
+ * Ban an IP permanently or for a long duration in-memory
+ */
+export function banIp(ip: string): void {
+  if (ip && ip !== "127.0.0.1" && ip !== "::1" && ip !== "localhost" && ip !== "anonymous-client") {
+    blacklistedIps.add(ip);
+  }
+}
+
+export function isIpBanned(ip: string): boolean {
+  return blacklistedIps.has(ip);
+}
+
+/**
  * Checks if request matches common bot probing, vulnerability scanners, or path traversal.
  */
 const MALICIOUS_PATTERNS = [
-  /\.(env|git|svn|bak|backup|config|sql|tar|gz|zip|rar|yml|yaml|ini|log|sqlite|db)$/i,
-  /(wp-admin|wp-login|xmlrpc|phpmyadmin|pma|adminer|actuator|\/cgi-bin\/|\.aws\/|\.ssh\/)/i,
+  /\.(env|git|svn|bak|backup|config|sql|tar|gz|zip|rar|yml|yaml|ini|log|sqlite|db|key|pem|crt|conf)$/i,
+  /(wp-admin|wp-login|xmlrpc|phpmyadmin|pma|adminer|actuator|\/cgi-bin\/|\.aws\/|\.ssh\/|\.docker\/)/i,
   /(\.\.\/|\.\.\\)/,
   /(etc\/passwd|proc\/self\/environ|win\.ini|boot\.ini)/i,
-  /(eval\(|<script|alert\(|union\s+select|information_schema|benchmark\(|pg_sleep)/i,
-  /(honeypot|\.php|\.asp|\.aspx|\.jsp|\.cgi|telescope|swagger|openapi\.json)/i,
+  /(eval\(|<script|alert\(|union\s+select|information_schema|benchmark\(|pg_sleep|sleep\()/i,
+  /(honeypot|\.php|\.asp|\.aspx|\.jsp|\.cgi|telescope|swagger|openapi\.json|solr|jenkins|weblogic|struts|jmx|redis)/i,
+  /(shell|cmd\.exe|powershell|bin\/sh|bin\/bash)/i,
 ];
 
 const SUSPICIOUS_USER_AGENTS = [
@@ -62,12 +76,54 @@ const SUSPICIOUS_USER_AGENTS = [
   /burp/i,
   /nuclei/i,
   /nessus/i,
-  /postman/i,
+  /fuzz/i,
+  /zmap/i,
+  /censys/i,
+  /shodan/i,
 ];
 
+const DANGEROUS_METHODS = new Set(["TRACE", "TRACK", "DEBUG", "CONNECT", "PROPFIND"]);
+
+/**
+ * Detects if the request is targeting raw host IP instead of a configured domain name.
+ * Port scanners and automated internet-wide probes (like Shodan, Masscan, Nmap) hit raw IPs.
+ */
+export function isDirectIpAccess(request: Request): boolean {
+  const host = request.headers.get("host") || request.headers.get(":authority") || "";
+  const hostname = host.split(":")[0]?.trim() || "";
+
+  // Allow local development and standard testing
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname.endsWith(".localhost") ||
+    hostname === ""
+  ) {
+    return false;
+  }
+
+  // IPv4 pattern (e.g., 192.168.1.1, 142.250.190.46)
+  const isIpv4 = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
+  // IPv6 pattern
+  const isIpv6 = /^\[?[a-fA-F0-9:]+\]?$/.test(hostname) && hostname.includes(":");
+
+  return isIpv4 || isIpv6;
+}
+
 export function detectMaliciousPayloadOrScanner(url: URL, request: Request): { malicious: boolean; reason?: string } {
+  // Check dangerous HTTP methods used for port probing / debugging
+  if (DANGEROUS_METHODS.has(request.method.toUpperCase())) {
+    return { malicious: true, reason: `Disallowed scanning method: ${request.method}` };
+  }
+
   const pathAndQuery = `${url.pathname}${url.search}`;
   
+  // URL length overflow defense (fuzzing attempts)
+  if (pathAndQuery.length > 2048) {
+    return { malicious: true, reason: "Payload exceeds safe URI buffer limit" };
+  }
+
   for (const pattern of MALICIOUS_PATTERNS) {
     if (pattern.test(pathAndQuery)) {
       return { malicious: true, reason: `Suspicious target signature: ${pathAndQuery.slice(0, 50)}` };
@@ -75,7 +131,6 @@ export function detectMaliciousPayloadOrScanner(url: URL, request: Request): { m
   }
 
   const userAgent = request.headers.get("user-agent") || "";
-  // Check scanners only on automated probes or if no referer/browser headers exist
   for (const botPattern of SUSPICIOUS_USER_AGENTS) {
     if (botPattern.test(userAgent)) {
       return { malicious: true, reason: `Automated scanner/exploit tool: ${userAgent.slice(0, 30)}` };

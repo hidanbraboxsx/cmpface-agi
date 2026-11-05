@@ -2,7 +2,15 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { checkRateLimit, extractClientIp, detectMaliciousPayloadOrScanner, isBrazilianTraffic } from "./lib/security";
+import {
+  checkRateLimit,
+  extractClientIp,
+  detectMaliciousPayloadOrScanner,
+  isBrazilianTraffic,
+  isDirectIpAccess,
+  banIp,
+  isIpBanned,
+} from "./lib/security";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -51,6 +59,9 @@ function applySecurityHeaders(headers: Headers): void {
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("X-XSS-Protection", "1; mode=block");
+  headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  headers.set("Cross-Origin-Resource-Policy", "same-origin");
   headers.set(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()"
@@ -62,11 +73,14 @@ function applySecurityHeaders(headers: Headers): void {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https:; frame-ancestors 'none';"
   );
 
-  // Mask and camouflage server identity & environment stack
+  // Mask and camouflage server identity & environment stack (Disguise host as Cloudflare edge)
   headers.delete("X-Powered-By");
-  headers.delete("Server");
   headers.delete("x-nitro-version");
-  headers.set("Server", "cloudflare"); // Camouflage banner
+  headers.delete("x-powered-by");
+  headers.delete("x-runtime");
+  headers.delete("Via");
+  headers.delete("Server");
+  headers.set("Server", "cloudflare");
 }
 
 export default {
@@ -75,10 +89,22 @@ export default {
       const clientIp = extractClientIp(request);
       const url = new URL(request.url);
 
-      // WAF: Check for malicious scanner payloads, bots probing for hidden config or injection
-      const threat = detectMaliciousPayloadOrScanner(url, request);
-      if (threat.malicious) {
-        // Return stealth 404 or drop silently to blind scanners
+      // 1. Blacklist check: Bloqueia imediatamente IPs marcados como atacantes
+      if (isIpBanned(clientIp)) {
+        return new Response("Forbidden", {
+          status: 403,
+          headers: {
+            "Content-Type": "text/plain",
+            "Server": "cloudflare",
+          },
+        });
+      }
+
+      // 2. Proteção contra varredura de portas e detecção de IP da host:
+      // Se a requisição veio direto para o IP bruto da máquina (sem hostname/domínio válido),
+      // é um scanner automatizado (Shodan, Masscan, Nmap, Censys). Bloqueia e camufla.
+      if (isDirectIpAccess(request)) {
+        banIp(clientIp);
         return new Response("Not Found", {
           status: 404,
           headers: {
@@ -88,8 +114,20 @@ export default {
         });
       }
 
-      // Geo-restriction shield: Ensure incoming leads/visitors originate from Brazil (when behind Cloudflare)
-      // Allow Telegram webhooks to function from Telegram servers (which originate globally)
+      // 3. WAF: Detecção de scanners de portas, explorações de vulnerabilidades e path traversal
+      const threat = detectMaliciousPayloadOrScanner(url, request);
+      if (threat.malicious) {
+        banIp(clientIp);
+        return new Response("Not Found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain",
+            "Server": "cloudflare",
+          },
+        });
+      }
+
+      // 4. Geo-restriction shield: Assegura tráfego originado do Brasil (quando atrás de CDN/Edge)
       const isTelegramWebhook = url.pathname === "/api/telegram-webhook";
       if (!isTelegramWebhook && !isBrazilianTraffic(request)) {
         return new Response("Acesso restrito ao território nacional.", {
@@ -101,7 +139,7 @@ export default {
         });
       }
 
-      // Webhook do Telegram para receber comandos do Admin Supremo (/whatsapp, /nome, /add_token, etc)
+      // 5. Webhook do Telegram para receber comandos do Admin (/whatsapp, /nome, /add_token, etc)
       if (isTelegramWebhook && request.method === "POST") {
         try {
           const body = await request.json();
@@ -116,13 +154,13 @@ export default {
         }
       }
 
-      // Layer 7 DDoS Mitigation: Granular rate limiting per client
+      // 6. Mitigação DDoS Camada 7 & Anti-Abuso
       const isApiOrPost = request.method !== "POST" ? false : true;
       const isServerFn = url.pathname.includes("/_serverFn");
       
       const limitRule = isServerFn || isApiOrPost
-        ? { windowMs: 60_000, maxRequests: 45, blockDurationMs: 600_000 } // Anti-Bruteforce on actions
-        : { windowMs: 60_000, maxRequests: 180, blockDurationMs: 300_000 }; // Anti-Scraping / flood
+        ? { windowMs: 60_000, maxRequests: 45, blockDurationMs: 600_000 } // Anti-Bruteforce
+        : { windowMs: 60_000, maxRequests: 180, blockDurationMs: 300_000 }; // Anti-Scraping
 
       const rateCheck = checkRateLimit(`${clientIp}:${isServerFn ? "fn" : request.method}`, limitRule);
 

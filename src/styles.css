@@ -127,6 +127,14 @@
   }
 }
 
+/* Anti-Clone & Anti-PDF Scraping: Render blank on print or save-as-PDF */
+@media print {
+  html, body {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
