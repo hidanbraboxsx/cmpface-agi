@@ -2,10 +2,25 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { checkRateLimit } from "./security";
 import {
-  BANKS, DURATIONS, PIX_TYPES, PROFILES, RANGES, REASONS,
-  computeAmount, computeScore, isValidAccount, isValidAgency, isValidCPF,
-  isValidName, isValidPhone, isValidPix, onlyDigits, parseBirthDate,
-  type Duration, type Range, type Reason,
+  BANKS,
+  DURATIONS,
+  PIX_TYPES,
+  PROFILES,
+  RANGES,
+  REASONS,
+  computeAmount,
+  computeScore,
+  isValidAccount,
+  isValidAgency,
+  isValidCPF,
+  isValidName,
+  isValidPhone,
+  isValidPix,
+  onlyDigits,
+  parseBirthDate,
+  type Duration,
+  type Range,
+  type Reason,
 } from "./loan";
 
 import { lookupCpf } from "./cpf-lookup";
@@ -32,17 +47,16 @@ export const checkCpfInquiry = createServerFn({ method: "POST" })
     return await lookupCpf(cleanCpf);
   });
 
-export const getPublicConfig = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const { getConfig } = await import("./bot-config");
-    const cfg = getConfig();
-    return {
-      whatsappNumber: cfg.whatsappNumber,
-      managerName: cfg.managerName,
-      managerAvatarUrl: cfg.managerAvatarUrl,
-      companyYears: cfg.companyYears,
-    };
-  });
+export const getPublicConfig = createServerFn({ method: "GET" }).handler(async () => {
+  const { getConfig } = await import("./bot-config");
+  const cfg = getConfig();
+  return {
+    whatsappNumber: cfg.whatsappNumber,
+    managerName: cfg.managerName,
+    managerAvatarUrl: cfg.managerAvatarUrl,
+    companyYears: cfg.companyYears,
+  };
+});
 
 const evalSchema = z.object({
   cpf: z.string().refine(isValidCPF, "CPF inválido"),
@@ -66,7 +80,10 @@ export const evaluateInquiry = createServerFn({ method: "POST" })
     }
 
     const score = computeScore({
-      cpf: data.cpf, duration: data.duration as Duration, range: data.range as Range, reason: data.reason as Reason,
+      cpf: data.cpf,
+      duration: data.duration as Duration,
+      range: data.range as Range,
+      reason: data.reason as Reason,
     });
     return { score, amount: computeAmount(score, data.range as Range) };
   });
@@ -78,15 +95,21 @@ const submitSchema = evalSchema.extend({
   birthDate: z.string().refine((v) => parseBirthDate(v) !== null, "Data inválida"),
   profile: z.enum(keys(PROFILES)),
   otherBanks: z.array(z.enum(BANKS as unknown as [string, ...string[]])).max(BANKS.length),
-  payout: z.discriminatedUnion("method", [
-    z.object({ method: z.literal("pix"), pixType: z.enum(PIX_TYPES), pixKey: z.string().max(120) }),
-    z.object({
-      method: z.literal("conta"),
-      bankName: z.string().trim().min(2).max(60),
-      agency: z.string().refine(isValidAgency),
-      account: z.string().refine(isValidAccount),
-    }),
-  ]).refine((p) => p.method !== "pix" || isValidPix(p.pixType, p.pixKey), "Chave PIX inválida"),
+  payout: z
+    .discriminatedUnion("method", [
+      z.object({
+        method: z.literal("pix"),
+        pixType: z.enum(PIX_TYPES),
+        pixKey: z.string().max(120),
+      }),
+      z.object({
+        method: z.literal("conta"),
+        bankName: z.string().trim().min(2).max(60),
+        agency: z.string().refine(isValidAgency),
+        account: z.string().refine(isValidAccount),
+      }),
+    ])
+    .refine((p) => p.method !== "pix" || isValidPix(p.pixType, p.pixKey), "Chave PIX inválida"),
 });
 
 export const submitInquiry = createServerFn({ method: "POST" })
@@ -104,7 +127,10 @@ export const submitInquiry = createServerFn({ method: "POST" })
     }
 
     const score = computeScore({
-      cpf: data.cpf, duration: data.duration as Duration, range: data.range as Range, reason: data.reason as Reason,
+      cpf: data.cpf,
+      duration: data.duration as Duration,
+      range: data.range as Range,
+      reason: data.reason as Reason,
     });
     const amount = computeAmount(score, data.range as Range);
     const p = data.payout;

@@ -37,13 +37,13 @@ export const dispatchPixelEvent = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       // Atualiza métricas reais do sistema
-      const { recordVisit, recordAbandon, recordConversion, recordSimulation, recordProposal } = await import("./system-metrics");
+      const { recordVisit, recordAbandon, recordConversion, recordSimulation, recordProposal } =
+        await import("./system-metrics");
       if (data.step === "visit") recordVisit();
       else if (data.step === "page_exit") {
         const exitStep = data.stepDetails?.replace("Parou na etapa: ", "") || "inicio";
         recordAbandon(exitStep);
-      }
-      else if (data.step === "cpf_entered" || data.step === "cpf_validated") recordSimulation();
+      } else if (data.step === "cpf_entered" || data.step === "cpf_validated") recordSimulation();
       else if (data.step === "valor_viewed" || data.step === "review_accepted") {
         if (data.approvedAmount) recordProposal(data.approvedAmount);
       } else if (data.step === "whatsapp_clicked") {
@@ -76,7 +76,11 @@ class ClientPixel {
     if (existing) {
       this.leadId = existing;
     } else {
-      this.leadId = "LEAD_" + Math.random().toString(36).substring(2, 9).toUpperCase() + "_" + Date.now().toString(36).toUpperCase();
+      this.leadId =
+        "LEAD_" +
+        Math.random().toString(36).substring(2, 9).toUpperCase() +
+        "_" +
+        Date.now().toString(36).toUpperCase();
       localStorage.setItem("agi_lead_id", this.leadId);
     }
 
@@ -127,7 +131,8 @@ class ClientPixel {
     }
 
     const timeOnSite = Math.round((Date.now() - this.startTime) / 1000);
-    const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone/i.test(navigator.userAgent);
+    const isMobile =
+      typeof navigator !== "undefined" && /Mobi|Android|iPhone/i.test(navigator.userAgent);
 
     const payload: LeadMetadata = {
       ...this.leadState,

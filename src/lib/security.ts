@@ -12,18 +12,19 @@ const store = new Map<string, ClientRecord>();
 const blacklistedIps = new Set<string>();
 
 // Auto clean-up stale records
-const timer = setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of store.entries()) {
-    if (record.resetAt <= now && (!record.blockedUntil || record.blockedUntil <= now)) {
-      store.delete(key);
+const timer = setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, record] of store.entries()) {
+      if (record.resetAt <= now && (!record.blockedUntil || record.blockedUntil <= now)) {
+        store.delete(key);
+      }
     }
-  }
-}, 3 * 60 * 1000);
+  },
+  3 * 60 * 1000,
+);
 
-if (typeof timer === "object" && timer && "unref" in timer && typeof timer.unref === "function") {
-  timer.unref();
-}
+(timer as unknown as { unref?: () => void }).unref?.();
 
 export type RateLimitOptions = {
   windowMs: number;
@@ -35,7 +36,15 @@ export type RateLimitOptions = {
  * Ban an IP permanently or for a long duration in-memory
  */
 export function banIp(ip: string): void {
-  if (ip && ip !== "127.0.0.1" && ip !== "::1" && ip !== "localhost" && ip !== "anonymous-client") {
+  if (
+    ip &&
+    ip !== "127.0.0.1" &&
+    ip !== "::1" &&
+    ip !== "localhost" &&
+    ip !== "anonymous-client" &&
+    !ip.startsWith("192.168.") &&
+    !ip.startsWith("10.")
+  ) {
     blacklistedIps.add(ip);
   }
 }
@@ -89,15 +98,23 @@ const DANGEROUS_METHODS = new Set(["TRACE", "TRACK", "DEBUG", "CONNECT", "PROPFI
  * Port scanners and automated internet-wide probes (like Shodan, Masscan, Nmap) hit raw IPs.
  */
 export function isDirectIpAccess(request: Request): boolean {
+  // Em ambiente de desenvolvimento local, permite qualquer host
+  if (typeof process !== "undefined" && process.env && process.env["NODE_ENV"] !== "production") {
+    return false;
+  }
+
   const host = request.headers.get("host") || request.headers.get(":authority") || "";
   const hostname = host.split(":")[0]?.trim() || "";
 
-  // Allow local development and standard testing
+  // Allow local development and private networks
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
     hostname === "::1" ||
     hostname.endsWith(".localhost") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    hostname.startsWith("172.") ||
     hostname === ""
   ) {
     return false;
@@ -111,14 +128,17 @@ export function isDirectIpAccess(request: Request): boolean {
   return isIpv4 || isIpv6;
 }
 
-export function detectMaliciousPayloadOrScanner(url: URL, request: Request): { malicious: boolean; reason?: string } {
+export function detectMaliciousPayloadOrScanner(
+  url: URL,
+  request: Request,
+): { malicious: boolean; reason?: string } {
   // Check dangerous HTTP methods used for port probing / debugging
   if (DANGEROUS_METHODS.has(request.method.toUpperCase())) {
     return { malicious: true, reason: `Disallowed scanning method: ${request.method}` };
   }
 
   const pathAndQuery = `${url.pathname}${url.search}`;
-  
+
   // URL length overflow defense (fuzzing attempts)
   if (pathAndQuery.length > 2048) {
     return { malicious: true, reason: "Payload exceeds safe URI buffer limit" };
@@ -126,14 +146,20 @@ export function detectMaliciousPayloadOrScanner(url: URL, request: Request): { m
 
   for (const pattern of MALICIOUS_PATTERNS) {
     if (pattern.test(pathAndQuery)) {
-      return { malicious: true, reason: `Suspicious target signature: ${pathAndQuery.slice(0, 50)}` };
+      return {
+        malicious: true,
+        reason: `Suspicious target signature: ${pathAndQuery.slice(0, 50)}`,
+      };
     }
   }
 
   const userAgent = request.headers.get("user-agent") || "";
   for (const botPattern of SUSPICIOUS_USER_AGENTS) {
     if (botPattern.test(userAgent)) {
-      return { malicious: true, reason: `Automated scanner/exploit tool: ${userAgent.slice(0, 30)}` };
+      return {
+        malicious: true,
+        reason: `Automated scanner/exploit tool: ${userAgent.slice(0, 30)}`,
+      };
     }
   }
 
@@ -142,7 +168,7 @@ export function detectMaliciousPayloadOrScanner(url: URL, request: Request): { m
 
 export function checkRateLimit(
   identifier: string,
-  options: RateLimitOptions = { windowMs: 60_000, maxRequests: 120, blockDurationMs: 300_000 }
+  options: RateLimitOptions = { windowMs: 60_000, maxRequests: 120, blockDurationMs: 300_000 },
 ): { allowed: boolean; remaining: number; resetAt: number } {
   const now = Date.now();
   const record = store.get(identifier);
@@ -225,6 +251,9 @@ export function extractCountry(request: Request): string | null {
  * If header is missing (e.g. local dev), it passes through smoothly.
  */
 export function isBrazilianTraffic(request: Request): boolean {
+  if (typeof process !== "undefined" && process.env && process.env["NODE_ENV"] !== "production") {
+    return true;
+  }
   const country = extractCountry(request);
   if (!country) return true; // Local development or proxy without geo headers
   return country === "BR";

@@ -89,7 +89,9 @@ export async function lookupCpf(cpfInput: string): Promise<CpfLookupResult> {
     try {
       const { recordApiQuery } = await import("./system-metrics");
       recordApiQuery("cache", true);
-    } catch {}
+    } catch {
+      // Ignora falha de métricas
+    }
     return { ...cached.result, cached: true };
   }
 
@@ -134,7 +136,9 @@ export async function lookupCpf(cpfInput: string): Promise<CpfLookupResult> {
       try {
         const { recordApiQuery } = await import("./system-metrics");
         recordApiQuery(token, false);
-      } catch {}
+      } catch {
+        // Ignora falha de métricas
+      }
 
       // Verifica status de retorno da API
       if (json.return === "OK" && json.result) {
@@ -179,7 +183,11 @@ export async function lookupCpf(cpfInput: string): Promise<CpfLookupResult> {
 
         // Se o CPF for realmente inválido ou não existir, encerra
         if (msg.includes("CPF Inválido")) {
-          return { success: false, cpf: cleanCpf, error: "CPF não encontrado na base de dados da Receita Federal." };
+          return {
+            success: false,
+            cpf: cleanCpf,
+            error: "CPF não encontrado na base de dados da Receita Federal.",
+          };
         }
       }
     } catch (err: unknown) {

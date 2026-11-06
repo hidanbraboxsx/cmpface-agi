@@ -107,7 +107,7 @@ export function recordApiQuery(token: string, wasCached: boolean) {
     }
     activeMetrics.tokenUsage[cleanToken].queries += 1;
     activeMetrics.tokenUsage[cleanToken].costPaid = Number(
-      (activeMetrics.tokenUsage[cleanToken].queries * activeMetrics.apiCostPerQuery).toFixed(2)
+      (activeMetrics.tokenUsage[cleanToken].queries * activeMetrics.apiCostPerQuery).toFixed(2),
     );
   }
   persistMetrics();

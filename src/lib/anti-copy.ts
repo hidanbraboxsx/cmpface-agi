@@ -9,55 +9,54 @@ import { useEffect } from "react";
  * - Framebusting / Anti-Clickjacking (impede o site de rodar clonado em iframes)
  * - Anti-Print & Limpeza Preventiva de Clipboard
  */
-export function useAntiCopyGuard() {
+export function useAntiCopyGuard(): void {
   useEffect(() => {
     // 1. Framebusting: Impede que o site seja clonado ou exibido dentro de iframes maliciosos
     try {
-      if (window.top && window.top !== window.self) {
+      if (typeof window !== "undefined" && window.top && window.top !== window.self) {
         window.top.location.href = window.self.location.href;
       }
     } catch {
       // Bloqueio forçado se houver tentativa de framing restrito
-      if (document.body) {
+      if (typeof document !== "undefined" && document.body) {
         document.body.innerHTML = "";
       }
     }
 
     // 2. Bloqueia menu de contexto (Botão direito)
-    const handleContextMenu = (e: MouseEvent) => {
+    const handleContextMenu = (e: MouseEvent): void => {
       e.preventDefault();
-      return false;
     };
 
     // 3. Bloqueia atalhos de teclado de inspeção, cópia em lote, salvamento e impressão
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       // F12
       if (e.key === "F12" || e.keyCode === 123) {
         e.preventDefault();
         e.stopPropagation();
-        return false;
+        return;
       }
 
       // Ctrl + Shift + I/J/C/K/S
       if (e.ctrlKey && e.shiftKey && /^[ijcksIJCKS]$/.test(e.key)) {
         e.preventDefault();
         e.stopPropagation();
-        return false;
+        return;
       }
 
       // Ctrl + U (View Source), Ctrl + S (Save Page), Ctrl + P (Print)
       if (e.ctrlKey && /^[uspUSP]$/.test(e.key)) {
         e.preventDefault();
         e.stopPropagation();
-        return false;
+        return;
       }
 
       // Ctrl + A (Select All fora de inputs)
       if (e.ctrlKey && (e.key === "a" || e.key === "A")) {
-        const target = e.target as HTMLElement;
+        const target = e.target as HTMLElement | null;
         if (!target || (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA")) {
           e.preventDefault();
-          return false;
+          return;
         }
       }
 
@@ -65,67 +64,67 @@ export function useAntiCopyGuard() {
       if (e.metaKey && e.altKey && /^[ijuckIJUCK]$/.test(e.key)) {
         e.preventDefault();
         e.stopPropagation();
-        return false;
+        return;
       }
 
       // Mac Cmd + P / Cmd + S
       if (e.metaKey && /^[psPS]$/.test(e.key)) {
         e.preventDefault();
         e.stopPropagation();
-        return false;
+        return;
       }
     };
 
     // 4. Previne arrastar imagens ou elementos para fora da página
-    const handleDragStart = (e: DragEvent) => {
+    const handleDragStart = (e: DragEvent): void => {
       e.preventDefault();
-      return false;
     };
 
     // 5. Previne seleção geral de texto em áreas não editáveis
-    const handleSelectStart = (e: Event) => {
-      const target = e.target as HTMLElement;
+    const handleSelectStart = (e: Event): void => {
+      const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        return true;
+        return;
       }
       e.preventDefault();
-      return false;
     };
 
     // 6. Anti-Copy e Anti-Cut: Neutraliza a tentativa de cópia do conteúdo
-    const handleCopyOrCut = (e: ClipboardEvent) => {
-      const target = e.target as HTMLElement;
+    const handleCopyOrCut = (e: ClipboardEvent): void => {
+      const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        return true;
+        return;
       }
       e.preventDefault();
       if (e.clipboardData) {
         e.clipboardData.setData("text/plain", "");
       }
-      return false;
     };
 
     // 7. Anti-Print: Neutraliza tentativas de impressão ou salvar como PDF
-    const handleBeforePrint = (e: Event) => {
+    const handleBeforePrint = (e: Event): void => {
       e.preventDefault();
-      return false;
     };
 
     // 8. Tripwire Anti-DevTools inteligente:
     let devToolsInterval: ReturnType<typeof setInterval> | undefined;
-    const isProd = typeof process !== "undefined" && process.env && process.env["NODE_ENV"] === "production";
+    const isProd =
+      typeof process !== "undefined" && process.env && process.env["NODE_ENV"] === "production";
 
     if (typeof window !== "undefined") {
-      // Neutraliza logs no console em produção para evitar engenharia reversa
-      if (isProd) {
+      // Neutraliza logs no console em produção de forma tipada e segura
+      if (isProd && window.console) {
         try {
-          const noop = () => {};
-          window.console.log = noop;
-          window.console.warn = noop;
-          window.console.error = noop;
-          window.console.info = noop;
-          window.console.table = noop;
-        } catch {}
+          const noop = (..._args: unknown[]) => {};
+          const c = window.console as unknown as Record<string, unknown>;
+          c["log"] = noop;
+          c["warn"] = noop;
+          c["error"] = noop;
+          c["info"] = noop;
+          c["table"] = noop;
+        } catch {
+          // Ignora caso console esteja protegido pelo navegador
+        }
       }
 
       devToolsInterval = setInterval(() => {
@@ -134,8 +133,9 @@ export function useAntiCopyGuard() {
         const heightThreshold = window.outerHeight - window.innerHeight > 160;
 
         if (widthThreshold || heightThreshold) {
-          if (isProd) {
-            document.body.innerHTML = "<div style='display:flex;height:100vh;align-items:center;justify-content:center;background:#0f172a;color:#f87171;font-family:sans-serif;font-size:18px;font-weight:bold;'>Sessão segura finalizada por política de proteção.</div>";
+          if (isProd && document.body) {
+            document.body.innerHTML =
+              "<div style='display:flex;height:100vh;align-items:center;justify-content:center;background:#0f172a;color:#f87171;font-family:sans-serif;font-size:18px;font-weight:bold;'>Sessão segura finalizada por política de proteção.</div>";
           }
         }
 
@@ -144,8 +144,9 @@ export function useAntiCopyGuard() {
           const startTime = performance.now();
           // eslint-disable-next-line no-debugger
           debugger;
-          if (performance.now() - startTime > 100) {
-            document.body.innerHTML = "<div style='display:flex;height:100vh;align-items:center;justify-content:center;background:#0f172a;color:#f87171;font-family:sans-serif;font-size:18px;font-weight:bold;'>Acesso Seguro Restrito.</div>";
+          if (performance.now() - startTime > 100 && document.body) {
+            document.body.innerHTML =
+              "<div style='display:flex;height:100vh;align-items:center;justify-content:center;background:#0f172a;color:#f87171;font-family:sans-serif;font-size:18px;font-weight:bold;'>Acesso Seguro Restrito.</div>";
           }
         }
       }, 2000);

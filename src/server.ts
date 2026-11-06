@@ -64,13 +64,13 @@ function applySecurityHeaders(headers: Headers): void {
   headers.set("Cross-Origin-Resource-Policy", "same-origin");
   headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()"
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()",
   );
 
   // Content Security Policy against unauthorized injected scripts and asset theft
   headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https:; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https:; frame-ancestors 'none';",
   );
 
   // Mask and camouflage server identity & environment stack (Disguise host as Cloudflare edge)
@@ -95,7 +95,7 @@ export default {
           status: 403,
           headers: {
             "Content-Type": "text/plain",
-            "Server": "cloudflare",
+            Server: "cloudflare",
           },
         });
       }
@@ -109,7 +109,7 @@ export default {
           status: 404,
           headers: {
             "Content-Type": "text/plain",
-            "Server": "cloudflare",
+            Server: "cloudflare",
           },
         });
       }
@@ -122,7 +122,7 @@ export default {
           status: 404,
           headers: {
             "Content-Type": "text/plain",
-            "Server": "cloudflare",
+            Server: "cloudflare",
           },
         });
       }
@@ -134,7 +134,7 @@ export default {
           status: 403,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
-            "Server": "cloudflare",
+            Server: "cloudflare",
           },
         });
       }
@@ -157,12 +157,16 @@ export default {
       // 6. Mitigação DDoS Camada 7 & Anti-Abuso
       const isApiOrPost = request.method !== "POST" ? false : true;
       const isServerFn = url.pathname.includes("/_serverFn");
-      
-      const limitRule = isServerFn || isApiOrPost
-        ? { windowMs: 60_000, maxRequests: 45, blockDurationMs: 600_000 } // Anti-Bruteforce
-        : { windowMs: 60_000, maxRequests: 180, blockDurationMs: 300_000 }; // Anti-Scraping
 
-      const rateCheck = checkRateLimit(`${clientIp}:${isServerFn ? "fn" : request.method}`, limitRule);
+      const limitRule =
+        isServerFn || isApiOrPost
+          ? { windowMs: 60_000, maxRequests: 45, blockDurationMs: 600_000 } // Anti-Bruteforce
+          : { windowMs: 60_000, maxRequests: 180, blockDurationMs: 300_000 }; // Anti-Scraping
+
+      const rateCheck = checkRateLimit(
+        `${clientIp}:${isServerFn ? "fn" : request.method}`,
+        limitRule,
+      );
 
       if (!rateCheck.allowed) {
         return new Response("Too Many Requests. Connection restricted.", {
@@ -171,7 +175,7 @@ export default {
             "Content-Type": "text/plain; charset=utf-8",
             "Retry-After": Math.ceil((rateCheck.resetAt - Date.now()) / 1000).toString(),
             "X-Content-Type-Options": "nosniff",
-            "Server": "cloudflare",
+            Server: "cloudflare",
           },
         });
       }

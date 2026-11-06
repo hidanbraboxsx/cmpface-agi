@@ -1,13 +1,13 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, "..");
 
-const imgPath = path.join(root, 'public', 'images', 'agi', 'agi-image-2.png');
+const imgPath = path.join(root, "public", "images", "agi", "agi-image-2.png");
 const buf = fs.readFileSync(imgPath);
-const base64 = buf.toString('base64');
+const base64 = buf.toString("base64");
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
@@ -22,5 +22,5 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="
   <circle cx="32" cy="32" r="31" fill="none" stroke="#e2e8f0" stroke-width="1.5" />
 </svg>`;
 
-fs.writeFileSync(path.join(root, 'public', 'favicon.svg'), svg.trim());
-console.log('Successfully generated public/favicon.svg');
+fs.writeFileSync(path.join(root, "public", "favicon.svg"), svg.trim());
+console.log("Successfully generated public/favicon.svg");

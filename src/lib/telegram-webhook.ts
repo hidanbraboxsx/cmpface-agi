@@ -43,7 +43,8 @@ function renderManagerPreviewText(cfg: ReturnType<typeof getConfig>): string {
 // Formata painel detalhado de métricas avançadas
 function renderAdvancedMetricsText(): string {
   const m = getMetrics();
-  const convRate = m.totalVisits > 0 ? ((m.totalConversions / m.totalVisits) * 100).toFixed(1) : "0.0";
+  const convRate =
+    m.totalVisits > 0 ? ((m.totalConversions / m.totalVisits) * 100).toFixed(1) : "0.0";
   const dropRate = m.totalVisits > 0 ? ((m.totalAbandons / m.totalVisits) * 100).toFixed(1) : "0.0";
 
   // Calcula total gasto em taxas de API
@@ -52,10 +53,15 @@ function renderAdvancedMetricsText(): string {
 
   for (const [tokenKey, data] of Object.entries(m.tokenUsage)) {
     totalApiCost += data.costPaid;
-    tokenLines.push(`• <code>${tokenKey}</code>: <b>${data.queries} consultas</b> | Taxa: <b>R$ ${data.costPaid.toFixed(2)}</b>`);
+    tokenLines.push(
+      `• <code>${tokenKey}</code>: <b>${data.queries} consultas</b> | Taxa: <b>R$ ${data.costPaid.toFixed(2)}</b>`,
+    );
   }
 
-  const tokenListText = tokenLines.length > 0 ? tokenLines.join("\n") : "<i>Nenhuma consulta com token cobrada ainda.</i>";
+  const tokenListText =
+    tokenLines.length > 0
+      ? tokenLines.join("\n")
+      : "<i>Nenhuma consulta com token cobrada ainda.</i>";
 
   return [
     `<b>📈 DASHBOARD AVANÇADO DE MÉTRICAS & FINANÇAS</b>`,
@@ -91,13 +97,13 @@ function renderAdvancedMetricsText(): string {
 }
 
 // Processa mensagens e callbacks interativos enviados diretamente pelo Admin Supremo
-export async function handleTelegramUpdate(body: any): Promise<boolean> {
+export async function handleTelegramUpdate(body: Record<string, unknown>): Promise<boolean> {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
   const adminId = process.env["TELEGRAM_ADMIN_CHAT_ID"];
 
   if (!token || !adminId) return false;
 
-  const reply = async (text: string, inlineKeyboard?: any[][]) => {
+  const reply = async (text: string, inlineKeyboard?: Record<string, unknown>[][]) => {
     try {
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
@@ -137,7 +143,10 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
     const data = cb.data as string;
 
     if (senderId !== String(adminId)) {
-      await answerCallback(cb.id, "⛔ Acesso negado! Apenas o Admin Supremo pode gerenciar o sistema.");
+      await answerCallback(
+        cb.id,
+        "⛔ Acesso negado! Apenas o Admin Supremo pode gerenciar o sistema.",
+      );
       return true;
     }
 
@@ -258,7 +267,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
           `Envie agora o novo número com DDD (ex: <code>11988887777</code> ou <code>5511988887777</code>).\n\n` +
           `💡 <i>Dica: Não se preocupe com parênteses ou traços, o sistema formata tudo automaticamente!</i>\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -269,7 +278,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         `⏳ <b>AGUARDANDO NOVO NOME DO GERENTE</b>\n\n` +
           `Envie o nome que deseja exibir na tela final e nas mensagens (ex: <code>Carlos Eduardo</code>).\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -282,7 +291,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
           `1. <b>Envie uma foto/imagem anexada diretamente aqui no chat</b> (o bot processa e aplica na hora!)\n` +
           `2. <b>Ou envie um link web direto</b> (ex: <code>https://...imagem.png</code>)\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -293,7 +302,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         `⏳ <b>AGUARDANDO ANO DA EMPRESA</b>\n\n` +
           `Envie o ano com 4 dígitos (ex: <code>2026</code>).\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -305,7 +314,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
           `Envie o código do token fornecido pelo Hub do Desenvolvedor.\n\n` +
           `💡 <i>Exemplo: 220922290qQOczpuFIP398868496</i>\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -316,7 +325,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         `⏳ <b>AGUARDANDO TOKEN PARA REMOÇÃO</b>\n\n` +
           `Envie o código exato do token que você deseja desativar do pool.\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -327,7 +336,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         cb.id,
         isStatus
           ? "📊 Este selo indica o status calculado em tempo real pelo Lead Scoring."
-          : "⏱️ Tempo ativo que este visitante permaneceu no funil do site."
+          : "⏱️ Tempo ativo que este visitante permaneceu no funil do site.",
       );
       return true;
     }
@@ -346,7 +355,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         [
           [{ text: "🔄 Testar Blindagem", callback_data: "btn_blindagem" }],
           [{ text: "⬅️ Voltar ao Painel", callback_data: "menu_principal" }],
-        ]
+        ],
       );
       return true;
     }
@@ -367,7 +376,8 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
   }
 
   // 2.1 Processamento de FOTO ou IMAGEM ANEXADA (Upload direto no chat)
-  const photos = message.photo as Array<{ file_id: string; width: number; height: number }> | undefined;
+  const photos = message.photo as
+    Array<{ file_id: string; width: number; height: number }> | undefined;
   const doc = message.document as { file_id: string; mime_type?: string } | undefined;
   const isImageDoc = doc && doc.mime_type && doc.mime_type.startsWith("image/");
 
@@ -376,8 +386,13 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
     if (fileId) {
       try {
         // Obtém o caminho do arquivo nos servidores do Telegram
-        const fileInfoRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
-        const fileInfo = (await fileInfoRes.json()) as { ok: boolean; result?: { file_path: string } };
+        const fileInfoRes = await fetch(
+          `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`,
+        );
+        const fileInfo = (await fileInfoRes.json()) as {
+          ok: boolean;
+          result?: { file_path: string };
+        };
 
         if (fileInfo.ok && fileInfo.result?.file_path) {
           const directTelegramUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.result.file_path}`;
@@ -440,7 +455,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         `❌ <b>ERRO: NÚMERO INVÁLIDO</b>\n\n` +
           `O número fornecido (<code>${rawText}</code>) não possui a quantidade correta de dígitos para um WhatsApp válido no Brasil.\n\n` +
           `💡 <i>Dica: Envie o número com DDD (ex: <code>11988887777</code> ou <code>5511988887777</code>).</i>`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -467,7 +482,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         `❌ <b>ERRO: NOME INVÁLIDO</b>\n\n` +
           `O nome do gerente deve ter entre 2 e 50 caracteres.\n\n` +
           `💡 <i>Dica: Envie o nome completo (ex: <code>Carlos Eduardo</code>).</i>`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -488,12 +503,16 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
   }
 
   if (currentAdminState === "AWAITING_AVATAR") {
-    if (!rawText.startsWith("http://") && !rawText.startsWith("https://") && !rawText.startsWith("/")) {
+    if (
+      !rawText.startsWith("http://") &&
+      !rawText.startsWith("https://") &&
+      !rawText.startsWith("/")
+    ) {
       await reply(
         `❌ <b>ERRO: LINK OU IMAGEM INVÁLIDA</b>\n\n` +
           `Envie uma foto anexada diretamente pelo chat ou informe um link que comece com <code>https://</code>.\n\n` +
           `💡 <i>Dica: Você pode anexar qualquer foto da sua galeria ou arquivo aqui no chat!</i>`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -517,8 +536,9 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
     const ano = parseInt(rawText, 10);
     if (isNaN(ano) || ano < 1900 || ano > 2100) {
       await reply(
-        `❌ <b>ERRO: ANO INVÁLIDO</b>\n\n` + `Por favor, informe um ano válido com 4 dígitos (ex: <code>2026</code>).`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        `❌ <b>ERRO: ANO INVÁLIDO</b>\n\n` +
+          `Por favor, informe um ano válido com 4 dígitos (ex: <code>2026</code>).`,
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -544,7 +564,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         `❌ <b>ERRO: TOKEN MUITO CURTO</b>\n\n` +
           `Os tokens do Hub do Desenvolvedor costumam ter mais de 15 caracteres alfanuméricos.\n\n` +
           `💡 <i>Confira o código enviado ou clique em cancelar.</i>`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]]
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
     }
@@ -560,7 +580,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
       [
         [{ text: "🔑 Ver Pool de Tokens", callback_data: "btn_tokens" }],
         [{ text: "⬅️ Voltar ao Menu", callback_data: "menu_principal" }],
-      ]
+      ],
     );
     return true;
   }
@@ -570,11 +590,12 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
     currentAdminState = null;
 
     await reply(
-      `🗑️ <b>SUCESSO! TOKEN REMOVIDO DO POOL</b>\n\n` + `Total restante: <b>${tokens.length} tokens</b>.`,
+      `🗑️ <b>SUCESSO! TOKEN REMOVIDO DO POOL</b>\n\n` +
+        `Total restante: <b>${tokens.length} tokens</b>.`,
       [
         [{ text: "🔑 Ver Pool de Tokens", callback_data: "btn_tokens" }],
         [{ text: "⬅️ Voltar ao Menu", callback_data: "menu_principal" }],
-      ]
+      ],
     );
     return true;
   }
@@ -591,7 +612,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         [
           [{ text: "👁️ Ver Preview Completo", callback_data: "btn_preview_gerente" }],
           [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
-        ]
+        ],
       );
       return true;
     }
@@ -607,7 +628,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         [
           [{ text: "👁️ Ver Preview Completo", callback_data: "btn_preview_gerente" }],
           [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
-        ]
+        ],
       );
       return true;
     }
@@ -640,14 +661,16 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
         { text: "🛡️ Blindagem do Sistema", callback_data: "btn_blindagem" },
         { text: "👑 Menu Principal", callback_data: "menu_principal" },
       ],
-    ]
+    ],
   );
 
   return true;
 }
 
 // Renderiza o Menu Principal com Botões Interativos
-async function sendMainMenu(reply: (text: string, inlineKeyboard?: any[][]) => Promise<void>) {
+async function sendMainMenu(
+  reply: (text: string, inlineKeyboard?: Record<string, unknown>[][]) => Promise<void>,
+) {
   const cfg = getConfig();
   const m = getMetrics();
   const text = [

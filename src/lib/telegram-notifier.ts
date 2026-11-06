@@ -52,20 +52,29 @@ export async function sendTelegramNotification(metadata: LeadMetadata): Promise<
   if (metadata.birthDate) respostas.push(`• <b>Nascimento:</b> ${metadata.birthDate}`);
   if (metadata.phone) {
     const rawDigits = metadata.phone.replace(/\D/g, "");
-    respostas.push(`• <b>WhatsApp do Lead:</b> <code>${metadata.phone}</code> <a href="https://wa.me/55${rawDigits}">[Chamar no Zap]</a>`);
+    respostas.push(
+      `• <b>WhatsApp do Lead:</b> <code>${metadata.phone}</code> <a href="https://wa.me/55${rawDigits}">[Chamar no Zap]</a>`,
+    );
   }
   if (metadata.profile) respostas.push(`• <b>Perfil INSS:</b> ${metadata.profile}`);
   if (metadata.reason) respostas.push(`• <b>Motivo:</b> ${metadata.reason}`);
   if (metadata.duration) respostas.push(`• <b>Tempo Recebimento:</b> ${metadata.duration}`);
   if (metadata.range) respostas.push(`• <b>Faixa Benefício:</b> ${metadata.range}`);
-  if (metadata.calculatedScore) respostas.push(`• <b>Score de Crédito:</b> ${metadata.calculatedScore} pts`);
-  if (metadata.approvedAmount) respostas.push(`• <b>Valor Pré-Aprovado:</b> <b>${brl(metadata.approvedAmount)}</b>`);
-  if (metadata.otherBanks && metadata.otherBanks.length > 0) respostas.push(`• <b>Bancos Declarados:</b> ${metadata.otherBanks.join(", ")}`);
+  if (metadata.calculatedScore)
+    respostas.push(`• <b>Score de Crédito:</b> ${metadata.calculatedScore} pts`);
+  if (metadata.approvedAmount)
+    respostas.push(`• <b>Valor Pré-Aprovado:</b> <b>${brl(metadata.approvedAmount)}</b>`);
+  if (metadata.otherBanks && metadata.otherBanks.length > 0)
+    respostas.push(`• <b>Bancos Declarados:</b> ${metadata.otherBanks.join(", ")}`);
   if (metadata.payoutMethod) {
     if (metadata.payoutMethod === "pix" && metadata.pixKey) {
-      respostas.push(`• <b>Recebimento:</b> PIX (${metadata.pixType ?? "chave"}): <code>${metadata.pixKey}</code>`);
+      respostas.push(
+        `• <b>Recebimento:</b> PIX (${metadata.pixType ?? "chave"}): <code>${metadata.pixKey}</code>`,
+      );
     } else if (metadata.payoutMethod === "conta" && (metadata.account || metadata.bankName)) {
-      respostas.push(`• <b>Recebimento:</b> Conta: ${metadata.bankName ?? "-"} | Ag: ${metadata.agency ?? "-"} | CC: ${metadata.account ?? "-"}`);
+      respostas.push(
+        `• <b>Recebimento:</b> Conta: ${metadata.bankName ?? "-"} | Ag: ${metadata.agency ?? "-"} | CC: ${metadata.account ?? "-"}`,
+      );
     }
   }
 
@@ -79,7 +88,9 @@ export async function sendTelegramNotification(metadata: LeadMetadata): Promise<
     `<b>🎯 ANÁLISE DE QUALIDADE DO LEAD:</b>`,
     `<b>Classificação:</b> <code>${tierBadge}</code>`,
     `<b>Pontuação Real:</b> <b>${quality.score}/100</b>`,
-    quality.badges.length > 0 ? `<b>Selos:</b> ${quality.badges.map((b) => `<code>[${b}]</code>`).join(" ")}` : "",
+    quality.badges.length > 0
+      ? `<b>Selos:</b> ${quality.badges.map((b) => `<code>[${b}]</code>`).join(" ")}`
+      : "",
     quality.fraudFlags.length > 0
       ? `<b>🚨 ALERTA DE FRAUDE / BOT:</b>\n${quality.fraudFlags.map((f) => `• ⚠️ <i>${f}</i>`).join("\n")}`
       : "",
@@ -92,7 +103,9 @@ export async function sendTelegramNotification(metadata: LeadMetadata): Promise<
     ``,
     `<b>📱 ORIGEM E DISPOSITIVO:</b>`,
     metadata.deviceType ? `• <b>Aparelho:</b> ${metadata.deviceType}` : "",
-    metadata.timeOnSiteSeconds !== undefined ? `• <b>Tempo Ativo no Funil:</b> ${metadata.timeOnSiteSeconds}s` : "",
+    metadata.timeOnSiteSeconds !== undefined
+      ? `• <b>Tempo Ativo no Funil:</b> ${metadata.timeOnSiteSeconds}s`
+      : "",
     `• <b>ID da Sessão:</b> <code>${metadata.leadId}</code>`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
   ]
@@ -104,13 +117,14 @@ export async function sendTelegramNotification(metadata: LeadMetadata): Promise<
   try {
     const rawDigits = metadata.phone ? metadata.phone.replace(/\D/g, "") : "";
     const cleanDigits = rawDigits.startsWith("55") ? rawDigits : `55${rawDigits}`;
-    const keyboard = rawDigits.length >= 10
-      ? {
-          inline_keyboard: [
-            [{ text: "💬 Chamar Lead no WhatsApp", url: `https://wa.me/${cleanDigits}` }],
-          ],
-        }
-      : undefined;
+    const keyboard =
+      rawDigits.length >= 10
+        ? {
+            inline_keyboard: [
+              [{ text: "💬 Chamar Lead no WhatsApp", url: `https://wa.me/${cleanDigits}` }],
+            ],
+          }
+        : undefined;
 
     // 1. Se já existe mensagem enviada para esse lead, EDITA a mesma mensagem (Zero SPAM!)
     if (existingMessageId) {
@@ -128,7 +142,10 @@ export async function sendTelegramNotification(metadata: LeadMetadata): Promise<
         }),
       });
 
-      const editJson = (await editRes.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+      const editJson = (await editRes.json().catch(() => ({}))) as {
+        ok?: boolean;
+        description?: string;
+      };
 
       if (editRes.ok || editJson.ok || editJson.description?.includes("message is not modified")) {
         // Mensagem atualizada com sucesso no mesmo card!
@@ -166,4 +183,3 @@ export async function sendTelegramNotification(metadata: LeadMetadata): Promise<
     return false;
   }
 }
-

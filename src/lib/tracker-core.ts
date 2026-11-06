@@ -108,7 +108,8 @@ export function evaluateLeadQuality(data: Partial<LeadMetadata>): LeadQualitySco
   let isBrazilianTarget = false;
 
   if (data.birthDate) {
-    const isoDate = parseBirthDate(data.birthDate) || (data.birthDate.includes("-") ? data.birthDate : null);
+    const isoDate =
+      parseBirthDate(data.birthDate) || (data.birthDate.includes("-") ? data.birthDate : null);
     if (isoDate) {
       const birthYear = new Date(isoDate).getFullYear();
       const currentYear = new Date().getFullYear();
@@ -186,7 +187,8 @@ export function evaluateLeadQuality(data: Partial<LeadMetadata>): LeadQualitySco
 
   return {
     score: Math.min(100, Math.max(0, score)),
-    isRealLead: tier === "DIAMANTE" || tier === "OURO" || (tier === "PRATA" && fraudFlags.length === 0),
+    isRealLead:
+      tier === "DIAMANTE" || tier === "OURO" || (tier === "PRATA" && fraudFlags.length === 0),
     tier,
     badges,
     fraudFlags,

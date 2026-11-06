@@ -15,7 +15,8 @@ export function isValidCPF(raw: string): boolean {
 }
 
 export const maskCPF = (v: string) =>
-  onlyDigits(v).slice(0, 11)
+  onlyDigits(v)
+    .slice(0, 11)
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
@@ -28,43 +29,86 @@ export const maskPhone = (v: string) => {
 };
 
 export const maskDate = (v: string) =>
-  onlyDigits(v).slice(0, 8).replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2");
+  onlyDigits(v)
+    .slice(0, 8)
+    .replace(/(\d{2})(\d)/, "$1/$2")
+    .replace(/(\d{2})(\d)/, "$1/$2");
 
 // Official ANATEL Brazilian DDDs
 const VALID_BRAZILIAN_DDDS = new Set([
-  11, 12, 13, 14, 15, 16, 17, 18, 19, // SP
-  21, 22, 24, // RJ
-  27, 28, // ES
-  31, 32, 33, 34, 35, 37, 38, // MG
-  41, 42, 43, 44, 45, 46, // PR
-  47, 48, 49, // SC
-  51, 53, 54, 55, // RS
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19, // SP
+  21,
+  22,
+  24, // RJ
+  27,
+  28, // ES
+  31,
+  32,
+  33,
+  34,
+  35,
+  37,
+  38, // MG
+  41,
+  42,
+  43,
+  44,
+  45,
+  46, // PR
+  47,
+  48,
+  49, // SC
+  51,
+  53,
+  54,
+  55, // RS
   61, // DF
-  62, 64, // GO
+  62,
+  64, // GO
   63, // TO
-  65, 66, // MT
+  65,
+  66, // MT
   67, // MS
   68, // AC
   69, // RO
-  71, 73, 74, 75, 77, // BA
+  71,
+  73,
+  74,
+  75,
+  77, // BA
   79, // SE
-  81, 87, // PE
+  81,
+  87, // PE
   82, // AL
   83, // PB
   84, // RN
-  85, 88, // CE
-  86, 89, // PI
-  91, 93, 94, // PA
-  92, 97, // AM
+  85,
+  88, // CE
+  86,
+  89, // PI
+  91,
+  93,
+  94, // PA
+  92,
+  97, // AM
   95, // RR
   96, // AP
-  98, 99, // MA
+  98,
+  99, // MA
 ]);
 
 export const isValidPhone = (v: string) => {
   const d = onlyDigits(v);
   if (d.length !== 11) return false;
-  
+
   const ddd = Number(d.slice(0, 2));
   if (!VALID_BRAZILIAN_DDDS.has(ddd)) return false;
 
@@ -79,7 +123,18 @@ export const isValidPhone = (v: string) => {
 };
 
 const SUSPICIOUS_FAKE_NAMES = new Set([
-  "teste", "test", "asdf", "qwerty", "fulano", "ciclano", "beltrano", "anonimo", "usuario", "cliente", "lead", "fake"
+  "teste",
+  "test",
+  "asdf",
+  "qwerty",
+  "fulano",
+  "ciclano",
+  "beltrano",
+  "anonimo",
+  "usuario",
+  "cliente",
+  "lead",
+  "fake",
 ]);
 
 export const isValidName = (v: string) => {
@@ -111,7 +166,8 @@ export function parseBirthDate(v: string): string | null {
   if (!m) return null;
   const [, dd, mm, yyyy] = m;
   const d = new Date(`${yyyy}-${mm}-${dd}T12:00:00Z`);
-  if (isNaN(d.getTime()) || d.getUTCDate() !== Number(dd) || d.getUTCMonth() + 1 !== Number(mm)) return null;
+  if (isNaN(d.getTime()) || d.getUTCDate() !== Number(dd) || d.getUTCMonth() + 1 !== Number(mm))
+    return null;
   const age = (Date.now() - d.getTime()) / (365.25 * 864e5);
   if (age < 18 || age > 110) return null;
   return `${yyyy}-${mm}-${dd}`;
@@ -123,10 +179,14 @@ export type PixType = (typeof PIX_TYPES)[number];
 export function isValidPix(type: PixType, key: string): boolean {
   const k = key.trim();
   switch (type) {
-    case "cpf": return isValidCPF(k);
-    case "telefone": return isValidPhone(k);
-    case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(k) && k.length <= 120;
-    case "aleatoria": return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k);
+    case "cpf":
+      return isValidCPF(k);
+    case "telefone":
+      return isValidPhone(k);
+    case "email":
+      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(k) && k.length <= 120;
+    case "aleatoria":
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k);
   }
 }
 
@@ -137,7 +197,11 @@ export const maskAccount = (v: string) => {
   return d.length > 1 ? `${d.slice(0, -1)}-${d.slice(-1)}` : d;
 };
 
-export const PROFILES = { aposentado: "Aposentado(a)", pensionista: "Pensionista", ambos: "Aposentado(a) e pensionista" } as const;
+export const PROFILES = {
+  aposentado: "Aposentado(a)",
+  pensionista: "Pensionista",
+  ambos: "Aposentado(a) e pensionista",
+} as const;
 export const REASONS = {
   idade: "Aposentadoria por idade",
   contribuicao: "Aposentadoria por tempo de contribuição",
@@ -165,16 +229,43 @@ export type Duration = keyof typeof DURATIONS;
 export type Range = keyof typeof RANGES;
 
 export const BANKS = [
-  "Caixa Econômica Federal", "Banco do Brasil", "Bradesco", "Itaú", "Santander",
-  "Nubank", "Banco Inter", "C6 Bank", "Mercado Pago", "PicPay", "Banco Pan", "Sicoob",
+  "Caixa Econômica Federal",
+  "Banco do Brasil",
+  "Bradesco",
+  "Itaú",
+  "Santander",
+  "Nubank",
+  "Banco Inter",
+  "C6 Bank",
+  "Mercado Pago",
+  "PicPay",
+  "Banco Pan",
+  "Sicoob",
 ] as const;
 
-const DURATION_PTS: Record<Duration, number> = { ate1: 20, "1a3": 70, "3a5": 110, "5a10": 150, mais10: 180 };
+const DURATION_PTS: Record<Duration, number> = {
+  ate1: 20,
+  "1a3": 70,
+  "3a5": 110,
+  "5a10": 150,
+  mais10: 180,
+};
 const RANGE_PTS: Record<Range, number> = { r1: 40, r2: 90, r3: 130, r4: 160 };
-const REASON_PTS: Record<Reason, number> = { idade: 60, contribuicao: 60, especial: 50, pensao_morte: 40, invalidez: 30 };
+const REASON_PTS: Record<Reason, number> = {
+  idade: 60,
+  contribuicao: 60,
+  especial: 50,
+  pensao_morte: 40,
+  invalidez: 30,
+};
 
 /** Score 300–950 from benefit history plus a stable account-activity factor derived from the CPF. */
-export function computeScore(i: { cpf: string; duration: Duration; range: Range; reason: Reason }): number {
+export function computeScore(i: {
+  cpf: string;
+  duration: Duration;
+  range: Range;
+  reason: Reason;
+}): number {
   const d = onlyDigits(i.cpf);
   const activity = d.split("").reduce((a, c, idx) => a + Number(c) * (idx + 3), 0) % 120;
   const s = 400 + DURATION_PTS[i.duration] + RANGE_PTS[i.range] + REASON_PTS[i.reason] + activity;

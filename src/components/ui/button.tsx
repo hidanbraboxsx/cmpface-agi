@@ -17,8 +17,10 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         hero: "bg-gradient-primary text-primary-foreground shadow-elegant hover:brightness-110 hover:-translate-y-0.5 transition-all rounded-xl font-semibold",
-        success: "bg-success text-success-foreground shadow-success hover:brightness-105 hover:-translate-y-0.5 transition-all rounded-xl font-semibold",
-        choice: "border-2 border-border bg-card text-foreground hover:border-primary/60 hover:bg-primary-soft rounded-xl justify-start text-left whitespace-normal min-h-14 h-auto py-4 px-4 leading-relaxed data-[active=true]:border-primary data-[active=true]:bg-primary-soft data-[active=true]:text-primary",
+        success:
+          "bg-success text-success-foreground shadow-success hover:brightness-105 hover:-translate-y-0.5 transition-all rounded-xl font-semibold",
+        choice:
+          "border-2 border-border bg-card text-foreground hover:border-primary/60 hover:bg-primary-soft rounded-xl justify-start text-left whitespace-normal min-h-14 h-auto py-4 px-4 leading-relaxed data-[active=true]:border-primary data-[active=true]:bg-primary-soft data-[active=true]:text-primary",
       },
       size: {
         default: "h-9 px-4 py-2",

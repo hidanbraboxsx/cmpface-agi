@@ -45,7 +45,11 @@ const activeConfig: DynamicConfig = {
 
 // Inicializa tokens a partir do process.env caso existam e não estejam no arquivo
 if (typeof process !== "undefined" && process.env) {
-  const envTokens = (process.env["HUB_DEVELOPER_TOKENS"] || process.env["HUB_DEVELOPER_TOKEN"] || "")
+  const envTokens = (
+    process.env["HUB_DEVELOPER_TOKENS"] ||
+    process.env["HUB_DEVELOPER_TOKEN"] ||
+    ""
+  )
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
@@ -61,7 +65,8 @@ export function getConfig(): DynamicConfig {
 export function updateConfig(partial: Partial<DynamicConfig>): DynamicConfig {
   if (partial.whatsappNumber !== undefined) activeConfig.whatsappNumber = partial.whatsappNumber;
   if (partial.managerName !== undefined) activeConfig.managerName = partial.managerName;
-  if (partial.managerAvatarUrl !== undefined) activeConfig.managerAvatarUrl = partial.managerAvatarUrl;
+  if (partial.managerAvatarUrl !== undefined)
+    activeConfig.managerAvatarUrl = partial.managerAvatarUrl;
   if (partial.companyYears !== undefined) activeConfig.companyYears = partial.companyYears;
   if (partial.apiTokens !== undefined) activeConfig.apiTokens = [...partial.apiTokens];
   savePersistedConfig(activeConfig);
