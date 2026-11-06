@@ -142,8 +142,8 @@ export default {
       // 5. Webhook do Telegram para receber comandos do Admin (/whatsapp, /nome, /add_token, etc)
       if (isTelegramWebhook && request.method === "POST") {
         try {
-          const body = await request.json();
           const { handleTelegramUpdate } = await import("./lib/telegram-webhook");
+          const body = (await request.json()) as Parameters<typeof handleTelegramUpdate>[0];
           await handleTelegramUpdate(body);
           return new Response(JSON.stringify({ ok: true }), {
             status: 200,
