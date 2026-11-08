@@ -1,4 +1,5 @@
 import { addApiToken, getConfig, removeApiToken, updateConfig } from "./bot-config";
+export { getConfig, updateConfig } from "./bot-config";
 import { getMetrics, resetMetrics } from "./system-metrics";
 import { brl } from "./loan";
 

@@ -179,7 +179,8 @@ export default {
         }
 
         if (request.method === "GET") {
-          const { setupTelegramWebhook, getConfig } = await import("./lib/telegram-webhook");
+          const { setupTelegramWebhook } = await import("./lib/telegram-webhook");
+          const { getConfig } = await import("./lib/bot-config");
           const setupResult = await setupTelegramWebhook(url.origin);
           const currentConfig = getConfig();
           return new Response(
