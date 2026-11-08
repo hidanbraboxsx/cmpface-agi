@@ -92,11 +92,21 @@ function applySecurityHeaders(headers: Headers): void {
   headers.set("Server", "cloudflare");
 }
 
+let hasAutoSetupWebhook = false;
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const clientIp = extractClientIp(request);
       const url = new URL(request.url);
+
+      // Auto-registra o webhook no Telegram silenciosamente na inicialização/primeiro acesso
+      if (!hasAutoSetupWebhook && typeof process !== "undefined" && process.env?.["TELEGRAM_BOT_TOKEN"]) {
+        hasAutoSetupWebhook = true;
+        import("./lib/telegram-webhook")
+          .then((m) => m.setupTelegramWebhook(url.origin))
+          .catch(() => {});
+      }
 
       // 1. Blacklist check: Bloqueia imediatamente IPs marcados como atacantes
       if (isIpBanned(clientIp)) {
@@ -149,17 +159,45 @@ export default {
       }
 
       // 5. Webhook do Telegram para receber comandos do Admin (/whatsapp, /nome, /add_token, etc)
-      if (isTelegramWebhook && request.method === "POST") {
-        try {
-          const { handleTelegramUpdate } = await import("./lib/telegram-webhook");
-          const body = (await request.json()) as Parameters<typeof handleTelegramUpdate>[0];
-          await handleTelegramUpdate(body);
-          return new Response(JSON.stringify({ ok: true }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
-        } catch {
-          return new Response(JSON.stringify({ ok: false }), { status: 200 });
+      if (isTelegramWebhook) {
+        if (request.method === "POST") {
+          try {
+            const { handleTelegramUpdate } = await import("./lib/telegram-webhook");
+            const body = (await request.json()) as Parameters<typeof handleTelegramUpdate>[0];
+            await handleTelegramUpdate(body);
+            return new Response(JSON.stringify({ ok: true }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          } catch (e) {
+            console.error("[Telegram Webhook] Erro ao processar POST:", e);
+            return new Response(JSON.stringify({ ok: false, error: String(e) }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+        }
+
+        if (request.method === "GET") {
+          const { setupTelegramWebhook, getConfig } = await import("./lib/telegram-webhook");
+          const setupResult = await setupTelegramWebhook(url.origin);
+          const currentConfig = getConfig();
+          return new Response(
+            JSON.stringify(
+              {
+                status: "online",
+                message: "Webhook do Telegram ativo e sincronizado!",
+                setup: setupResult,
+                config: currentConfig,
+              },
+              null,
+              2,
+            ),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json; charset=utf-8" },
+            },
+          );
         }
       }
 

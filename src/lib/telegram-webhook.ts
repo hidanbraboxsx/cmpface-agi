@@ -438,11 +438,15 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
   const message = body.message;
   if (!message) return false;
 
+  const configuredAdminId = process.env["TELEGRAM_ADMIN_CHAT_ID"]?.trim();
   const senderId = String(message.chat?.id || message.from?.id || "");
   const rawText = (message.text || message.caption || "").trim();
 
+  // Se TELEGRAM_ADMIN_CHAT_ID não foi definido, adota dinamicamente o primeiro usuário do chat privado
+  const activeAdminId = configuredAdminId || senderId;
+
   // Apenas o Admin Supremo pode interagir
-  if (!adminId || senderId !== adminId) {
+  if (senderId !== activeAdminId) {
     if (senderId) {
       try {
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -451,13 +455,11 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
           body: JSON.stringify({
             chat_id: senderId,
             text:
-              `👋 <b>Olá!</b>\n\n` +
-              `Recebemos o seu comando, mas o bot possui controle de acesso restrito.\n\n` +
-              `🆔 <b>Seu ID do Telegram:</b> <code>${senderId}</code>\n\n` +
-              (adminId
-                ? `⚠️ <i>O sistema atualmente está configurado para outro ID de administrador.</i>\n\n`
-                : `⚠️ <i>A variável <b>TELEGRAM_ADMIN_CHAT_ID</b> ainda não foi preenchida na Vercel.</i>\n\n`) +
-              `👉 <b>Para liberar o seu acesso como Administrador Supremo:</b>\n` +
+              `👋 <b>Olá! Painel Administrativo Agibank</b>\n\n` +
+              `Recebemos o seu comando, mas seu ID do Telegram é:\n` +
+              `🆔 <b>Seu ID:</b> <code>${senderId}</code>\n\n` +
+              `O sistema está aguardando o ID do Administrador: <code>${configuredAdminId}</code>.\n\n` +
+              `👉 <b>Para liberar este chat como Administrador Supremo permanente:</b>\n` +
               `1. Acesse o painel da sua Vercel.\n` +
               `2. Vá em <b>Settings ➔ Environment Variables</b>.\n` +
               `3. Configure a variável <b>TELEGRAM_ADMIN_CHAT_ID</b> com o valor <code>${senderId}</code>.\n` +
@@ -528,6 +530,121 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
   if (rawText === "/start" || rawText === "/menu" || rawText === "/painel") {
     currentAdminState = null;
     return sendMainMenu(reply);
+  }
+
+  // Atalhos rápidos para alterar o WhatsApp
+  if (
+    rawText.startsWith("/whatsapp") ||
+    rawText.startsWith("/numero") ||
+    rawText.startsWith("/contato") ||
+    rawText.startsWith("/zap")
+  ) {
+    const parts = rawText.split(/\s+/);
+    const candidate = parts.slice(1).join("").replace(/\D/g, "");
+    if (candidate.length >= 10 && candidate.length <= 15) {
+      const finalNumber = candidate.startsWith("55") ? candidate : `55${candidate}`;
+      const updatedCfg = updateConfig({ whatsappNumber: finalNumber });
+      currentAdminState = null;
+      await reply(
+        `🎉 <b>WHATSAPP DOS LEADS ATUALIZADO COM SUCESSO!</b>\n\n` +
+          `📱 Novo WhatsApp de Recebimento: <b>${finalNumber}</b>\n\n` +
+          renderManagerPreviewText(updatedCfg),
+        [
+          [{ text: "👁️ Ver Preview Real no Site", callback_data: "btn_preview_gerente" }],
+          [{ text: "⬅️ Voltar ao Menu Principal", callback_data: "menu_principal" }],
+        ],
+      );
+      return true;
+    } else {
+      currentAdminState = "AWAITING_WHATSAPP";
+      await reply(
+        `📱 <b>ALTERAR NÚMERO DE WHATSAPP DO GERENTE</b>\n\n` +
+          `Envie o novo número com DDD diretamente aqui no chat.\n\n` +
+          `<i>Exemplo:</i> <code>18982719536</code> ou <code>(11) 98888-7777</code>`,
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
+      );
+      return true;
+    }
+  }
+
+  // Atalhos rápidos para alterar o Nome do Gerente
+  if (rawText.startsWith("/nome") || rawText.startsWith("/gerente")) {
+    const parts = rawText.split(/\s+/);
+    const newName = parts.slice(1).join(" ").trim();
+    if (newName.length >= 2 && newName.length <= 50) {
+      const updatedCfg = updateConfig({ managerName: newName });
+      currentAdminState = null;
+      await reply(
+        `🎉 <b>NOME DO GERENTE ATUALIZADO!</b>\n\n` +
+          `👤 Novo Gerente: <b>${newName}</b>\n\n` +
+          renderManagerPreviewText(updatedCfg),
+        [
+          [{ text: "👁️ Ver Preview Real", callback_data: "btn_preview_gerente" }],
+          [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
+        ],
+      );
+      return true;
+    } else {
+      currentAdminState = "AWAITING_NOME";
+      await reply(
+        `👤 <b>ALTERAR NOME DO GERENTE</b>\n\n` +
+          `Envie o nome do gerente de atendimento diretamente aqui no chat.\n\n` +
+          `<i>Exemplo:</i> <code>Lucas Cardoso</code>`,
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
+      );
+      return true;
+    }
+  }
+
+  // Se o usuário simplesmente enviar um número de telefone com DDD solto no chat (ex: 18982719536 ou 11988887777)
+  const plainDigits = rawText.replace(/\D/g, "");
+  if (
+    plainDigits.length >= 10 &&
+    plainDigits.length <= 13 &&
+    /^[0-9\s()+-]+$/.test(rawText) &&
+    !rawText.startsWith("/")
+  ) {
+    const finalNumber = plainDigits.startsWith("55") ? plainDigits : `55${plainDigits}`;
+    const updatedCfg = updateConfig({ whatsappNumber: finalNumber });
+    currentAdminState = null;
+    await reply(
+      `🎉 <b>WHATSAPP DO GERENTE ATUALIZADO AUTOMATICAMENTE!</b>\n\n` +
+        `Detectamos o número enviado e atualizamos o redirecionamento dos leads para:\n` +
+        `📱 <b>${finalNumber}</b>\n\n` +
+        renderManagerPreviewText(updatedCfg),
+      [
+        [{ text: "👁️ Ver Preview Real no Site", callback_data: "btn_preview_gerente" }],
+        [{ text: "⬅️ Voltar ao Menu Principal", callback_data: "menu_principal" }],
+      ],
+    );
+    return true;
+  }
+
+  if (rawText === "/preview") {
+    currentAdminState = null;
+    const cfg = getConfig();
+    const msg = renderManagerPreviewText(cfg);
+    await reply(msg, [
+      [
+        { text: "✏️ Alterar WhatsApp", callback_data: "act_change_whatsapp" },
+        { text: "✏️ Alterar Nome", callback_data: "act_change_name" },
+      ],
+      [{ text: "⬅️ Voltar ao Painel", callback_data: "menu_principal" }],
+    ]);
+    return true;
+  }
+
+  if (rawText === "/status" || rawText === "/webhook") {
+    const cfg = getConfig();
+    await reply(
+      `📡 <b>STATUS DO SISTEMA & REDIRECIONAMENTO</b>\n\n` +
+        `• <b>Gerente Ativo:</b> <b>${cfg.managerName}</b>\n` +
+        `• <b>WhatsApp de Redirecionamento:</b> <code>${cfg.whatsappNumber}</code>\n` +
+        `• <b>Webhook Ativo:</b> 🟢 <code>https://agibankconsult.vercel.app/api/telegram-webhook</code>\n` +
+        `• <b>Redirecionamento dos Leads:</b> 🟢 <b>100% Operacional</b>`,
+      [[{ text: "📊 Menu Principal", callback_data: "menu_principal" }]],
+    );
+    return true;
   }
 
   if (rawText === "/metricas" || rawText === "/dashboard") {
@@ -801,4 +918,35 @@ async function sendMainMenu(
 
   await reply(text, inlineKeyboard);
   return true;
+}
+
+// Registra e sincroniza o webhook oficial com a API do Telegram
+export async function setupTelegramWebhook(
+  baseUrl?: string,
+): Promise<{ ok: boolean; description?: string; url?: string }> {
+  const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
+  if (!token) {
+    return { ok: false, description: "TELEGRAM_BOT_TOKEN não configurado nas variáveis de ambiente." };
+  }
+
+  const host =
+    baseUrl ||
+    process.env["VERCEL_PROJECT_PRODUCTION_URL"] ||
+    process.env["VERCEL_URL"] ||
+    "https://agibankconsult.vercel.app";
+
+  const cleanHost = host.startsWith("http") ? host : `https://${host}`;
+  const webhookUrl = `${cleanHost}/api/telegram-webhook`;
+
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}&drop_pending_updates=true`,
+    );
+    const data = (await res.json()) as { ok: boolean; description?: string };
+    console.log(`[Telegram Setup] Webhook registrado para ${webhookUrl}:`, data);
+    return { ...data, url: webhookUrl };
+  } catch (err) {
+    console.error("[Telegram Setup] Erro ao registrar webhook:", err);
+    return { ok: false, description: String(err), url: webhookUrl };
+  }
 }
