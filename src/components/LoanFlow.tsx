@@ -848,8 +848,8 @@ export function LoanFlow() {
                   method === "pix"
                     ? !isValidPix(pixType, pixKey)
                     : bankName.trim().length < 2 ||
-                      !isValidAgency(agency) ||
-                      !isValidAccount(account)
+                    !isValidAgency(agency) ||
+                    !isValidAccount(account)
                 }
                 onNext={submitPayout}
               />
@@ -1543,9 +1543,8 @@ function Loading({
           return (
             <li
               key={l}
-              className={`flex items-center gap-3 transition-opacity duration-500 ${
-                j <= i ? "opacity-100" : "opacity-35"
-              }`}
+              className={`flex items-center gap-3 transition-opacity duration-500 ${j <= i ? "opacity-100" : "opacity-35"
+                }`}
             >
               {isDone ? (
                 <CheckCircle2 className="size-4 shrink-0 text-success" />
