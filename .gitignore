@@ -32,6 +32,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Runtime data
+.bot-config.json
+.system-metrics.json
+
 # Environment
 .env
 .env.*
