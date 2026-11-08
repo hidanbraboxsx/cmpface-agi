@@ -232,21 +232,27 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
 
     // Dashboard de Métricas
     if (data === "btn_metricas") {
-      const msg = renderAdvancedMetricsText();
+      const m = getMetrics();
+      const text =
+        `📊 <b>Métricas de Tráfego & Conversão</b>\n` +
+        `• Acessos: <b>${m.totalVisits}</b>\n` +
+        `• Propostas: <b>${m.totalProposals}</b>\n` +
+        `• Conversões WhatsApp: 🟢 <b>${m.totalConversions}</b>\n` +
+        `• Volume Confirmado: <b>${brl(m.totalRevenueConfirmed)}</b>`;
       const keyboard = [
         [
-          { text: "🔄 Atualizar Métricas", callback_data: "btn_metricas" },
-          { text: "🗑️ Zerar Métricas", callback_data: "act_zerar_metricas" },
+          { text: "🔄 Atualizar", callback_data: "btn_metricas" },
+          { text: "🗑️ Zerar", callback_data: "act_zerar_metricas" },
         ],
-        [{ text: "⬅️ Voltar ao Painel", callback_data: "menu_principal" }],
+        [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
       ];
-      await reply(msg, keyboard);
+      await reply(text, keyboard);
       return true;
     }
 
     if (data === "act_zerar_metricas") {
       resetMetrics();
-      await reply("✅ <b>Métricas zeradas com sucesso!</b> Novo ciclo iniciado.", [
+      await reply("✅ <b>Métricas zeradas!</b>", [
         [{ text: "📊 Ver Métricas", callback_data: "btn_metricas" }],
         [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
       ]);
@@ -256,89 +262,54 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     // Preview do Gerente
     if (data === "btn_preview_gerente") {
       const cfg = getConfig();
-      const msg = renderManagerPreviewText(cfg);
+      const waUrl = `https://wa.me/${cfg.whatsappNumber}?text=Olá,%20${encodeURIComponent(cfg.managerName)}!`;
+      const text = `👁️ <b>Preview do Lead</b>\n👤 Gerente: <b>${cfg.managerName}</b>\n📱 WhatsApp: <code>${cfg.whatsappNumber}</code>`;
       const keyboard = [
+        [{ text: "📲 Testar Link do WhatsApp", url: waUrl }],
         [
           { text: "✏️ Alterar WhatsApp", callback_data: "act_change_whatsapp" },
           { text: "✏️ Alterar Nome", callback_data: "act_change_name" },
         ],
-        [
-          { text: "🖼️ Alterar Foto/Avatar", callback_data: "act_change_avatar" },
-          { text: "📅 Alterar Ano", callback_data: "act_change_year" },
-        ],
-        [{ text: "⬅️ Voltar ao Painel", callback_data: "menu_principal" }],
+        [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
       ];
-      await reply(msg, keyboard);
+      await reply(text, keyboard);
       return true;
     }
 
     if (data === "btn_gerente") {
       const cfg = getConfig();
-      const msg = [
-        `<b>👤 GESTÃO DO PERFIL DO GERENTE & CONTATO</b>`,
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-        `<b>• Nome Atual:</b> <b>${cfg.managerName}</b>`,
-        `<b>• WhatsApp Atual:</b> <code>${cfg.whatsappNumber}</code>`,
-        `<b>• Foto/Avatar:</b> <code>${cfg.managerAvatarUrl}</code>`,
-        `<b>• Ano de Empresa:</b> <code>${cfg.companyYears}</code>`,
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-        `<i>Escolha uma das ações abaixo:</i>`,
-      ].join("\n");
-
+      const text = `👤 <b>Gerente & Contato</b>\n• Nome: <b>${cfg.managerName}</b>\n• WhatsApp: <code>${cfg.whatsappNumber}</code>`;
       const keyboard = [
-        [{ text: "👁️ Ver Preview Real da Tela", callback_data: "btn_preview_gerente" }],
+        [{ text: "📱 Alterar WhatsApp", callback_data: "act_change_whatsapp" }],
         [
-          { text: "✏️ Alterar WhatsApp", callback_data: "act_change_whatsapp" },
-          { text: "✏️ Alterar Nome", callback_data: "act_change_name" },
-        ],
-        [
+          { text: "👤 Alterar Nome", callback_data: "act_change_name" },
           { text: "🖼️ Alterar Foto/Avatar", callback_data: "act_change_avatar" },
-          { text: "📅 Alterar Ano", callback_data: "act_change_year" },
         ],
-        [{ text: "⬅️ Voltar ao Painel", callback_data: "menu_principal" }],
+        [{ text: "👁️ Ver Preview no Site", callback_data: "btn_preview_gerente" }],
+        [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
       ];
-
-      await reply(msg, keyboard);
+      await reply(text, keyboard);
       return true;
     }
 
     if (data === "btn_tokens") {
       const cfg = getConfig();
-      const list =
-        cfg.apiTokens.length > 0
-          ? cfg.apiTokens.map((t, i) => `<b>${i + 1}.</b> <code>${t}</code>`).join("\n")
-          : "<i>Nenhum token cadastrado no pool atualmente.</i>";
-
-      const msg = [
-        `<b>🔑 POOL DE TOKENS DA API CPF</b>`,
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-        `<b>Status:</b> ${cfg.apiTokens.length > 0 ? "🟢 Operante com Rotação Ativa" : "🔴 Sem tokens cadastrados"}`,
-        `<b>Total de Tokens Ativos:</b> <b>${cfg.apiTokens.length}</b>`,
-        ``,
-        list,
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-        `<i>O sistema alterna automaticamente entre os tokens para não estourar a cota da Receita.</i>`,
-      ].join("\n");
-
+      const text = `🔑 <b>Tokens API CPF</b>: <b>${cfg.apiTokens.length} ativos</b>`;
       const keyboard = [
         [
           { text: "➕ Adicionar Token", callback_data: "act_add_token" },
           { text: "🗑️ Remover Token", callback_data: "act_del_token" },
         ],
-        [{ text: "⬅️ Voltar ao Painel", callback_data: "menu_principal" }],
+        [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
       ];
-
-      await reply(msg, keyboard);
+      await reply(text, keyboard);
       return true;
     }
 
     if (data === "act_change_whatsapp") {
       currentAdminState = "AWAITING_WHATSAPP";
       await reply(
-        `⏳ <b>AGUARDANDO NOVO NÚMERO DE WHATSAPP</b>\n\n` +
-          `Envie agora o novo número com DDD (ex: <code>11988887777</code> ou <code>5511988887777</code>).\n\n` +
-          `💡 <i>Dica: Não se preocupe com parênteses ou traços, o sistema formata tudo automaticamente!</i>\n\n` +
-          `❌ Para cancelar, clique no botão abaixo.`,
+        `📱 <b>Envie o novo número de WhatsApp com DDD:</b>`,
         [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
@@ -347,7 +318,11 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     if (data === "act_change_name") {
       currentAdminState = "AWAITING_NOME";
       await reply(
-        `⏳ <b>AGUARDANDO NOVO NOME DO GERENTE</b>\n\n` +
+        `👤 <b>Envie o novo nome do gerente:</b>`,
+        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
+      );
+      return true;
+    }
           `Envie o nome que deseja exibir na tela final e nas mensagens (ex: <code>Carlos Eduardo</code>).\n\n` +
           `❌ Para cancelar, clique no botão abaixo.`,
         [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
@@ -544,24 +519,20 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     const candidate = parts.slice(1).join("").replace(/\D/g, "");
     if (candidate.length >= 10 && candidate.length <= 15) {
       const finalNumber = candidate.startsWith("55") ? candidate : `55${candidate}`;
-      const updatedCfg = updateConfig({ whatsappNumber: finalNumber });
+      updateConfig({ whatsappNumber: finalNumber });
       currentAdminState = null;
       await reply(
-        `🎉 <b>WHATSAPP DOS LEADS ATUALIZADO COM SUCESSO!</b>\n\n` +
-          `📱 Novo WhatsApp de Recebimento: <b>${finalNumber}</b>\n\n` +
-          renderManagerPreviewText(updatedCfg),
+        `✅ <b>WhatsApp atualizado:</b> <code>${finalNumber}</code>`,
         [
-          [{ text: "👁️ Ver Preview Real no Site", callback_data: "btn_preview_gerente" }],
-          [{ text: "⬅️ Voltar ao Menu Principal", callback_data: "menu_principal" }],
+          [{ text: "👁️ Ver Preview no Site", callback_data: "btn_preview_gerente" }],
+          [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
         ],
       );
       return true;
     } else {
       currentAdminState = "AWAITING_WHATSAPP";
       await reply(
-        `📱 <b>ALTERAR NÚMERO DE WHATSAPP DO GERENTE</b>\n\n` +
-          `Envie o novo número com DDD diretamente aqui no chat.\n\n` +
-          `<i>Exemplo:</i> <code>18982719536</code> ou <code>(11) 98888-7777</code>`,
+        `📱 <b>Envie o novo número de WhatsApp com DDD:</b>`,
         [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
@@ -573,12 +544,10 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     const parts = rawText.split(/\s+/);
     const newName = parts.slice(1).join(" ").trim();
     if (newName.length >= 2 && newName.length <= 50) {
-      const updatedCfg = updateConfig({ managerName: newName });
+      updateConfig({ managerName: newName });
       currentAdminState = null;
       await reply(
-        `🎉 <b>NOME DO GERENTE ATUALIZADO!</b>\n\n` +
-          `👤 Novo Gerente: <b>${newName}</b>\n\n` +
-          renderManagerPreviewText(updatedCfg),
+        `✅ <b>Nome atualizado:</b> <b>${newName}</b>`,
         [
           [{ text: "👁️ Ver Preview Real", callback_data: "btn_preview_gerente" }],
           [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
@@ -588,9 +557,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     } else {
       currentAdminState = "AWAITING_NOME";
       await reply(
-        `👤 <b>ALTERAR NOME DO GERENTE</b>\n\n` +
-          `Envie o nome do gerente de atendimento diretamente aqui no chat.\n\n` +
-          `<i>Exemplo:</i> <code>Lucas Cardoso</code>`,
+        `👤 <b>Envie o novo nome do gerente:</b>`,
         [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
       );
       return true;
@@ -606,16 +573,13 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     !rawText.startsWith("/")
   ) {
     const finalNumber = plainDigits.startsWith("55") ? plainDigits : `55${plainDigits}`;
-    const updatedCfg = updateConfig({ whatsappNumber: finalNumber });
+    updateConfig({ whatsappNumber: finalNumber });
     currentAdminState = null;
     await reply(
-      `🎉 <b>WHATSAPP DO GERENTE ATUALIZADO AUTOMATICAMENTE!</b>\n\n` +
-        `Detectamos o número enviado e atualizamos o redirecionamento dos leads para:\n` +
-        `📱 <b>${finalNumber}</b>\n\n` +
-        renderManagerPreviewText(updatedCfg),
+      `✅ <b>WhatsApp atualizado:</b> <code>${finalNumber}</code>`,
       [
-        [{ text: "👁️ Ver Preview Real no Site", callback_data: "btn_preview_gerente" }],
-        [{ text: "⬅️ Voltar ao Menu Principal", callback_data: "menu_principal" }],
+        [{ text: "👁️ Ver Preview no Site", callback_data: "btn_preview_gerente" }],
+        [{ text: "⬅️ Menu Principal", callback_data: "menu_principal" }],
       ],
     );
     return true;
@@ -882,38 +846,26 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
   return true;
 }
 
-// Renderiza o Menu Principal com Botões Interativos
+// Renderiza o Menu Principal com Botões e Ações
 async function sendMainMenu(
   reply: (text: string, inlineKeyboard?: TelegramInlineButton[][]) => Promise<void>,
 ) {
   const cfg = getConfig();
-  const m = getMetrics();
-  const text = [
-    `<b>👑 PAINEL SUPREMO DE CONTROLE & MÉTRICAS · AGIBANK</b>`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `<b>⚙️ STATUS OPERACIONAL DO SISTEMA:</b>`,
-    `• <b>Gerente Ativo:</b> <b>${cfg.managerName}</b>`,
-    `• <b>WhatsApp de Recebimento:</b> <code>${cfg.whatsappNumber}</code>`,
-    `• <b>Sessões Ativas no Funil:</b> <b>${m.totalVisits}</b>`,
-    `• <b>Conversões no WhatsApp:</b> <b>${m.totalConversions}</b>`,
-    `• <b>Tokens da Receita Ativos:</b> <b>${cfg.apiTokens.length}</b>`,
-    `• <b>Blindagem & Anti-Cópia:</b> 🟢 <b>100% Blindado</b>`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `<i>Selecione uma ação para gerenciar:</i>`,
-  ].join("\n");
+  const text = `🎛️ <b>Painel de Gestão</b>\n• WhatsApp: <code>${cfg.whatsappNumber}</code>\n• Gerente: <b>${cfg.managerName}</b>`;
 
   const inlineKeyboard = [
+    [{ text: "📱 Alterar WhatsApp de Contato", callback_data: "act_change_whatsapp" }],
     [
-      { text: "📈 Métricas Avançadas & Renda", callback_data: "btn_metricas" },
-      { text: "👁️ Preview Real do Gerente", callback_data: "btn_preview_gerente" },
+      { text: "👤 Alterar Nome", callback_data: "act_change_name" },
+      { text: "🖼️ Alterar Foto/Avatar", callback_data: "act_change_avatar" },
     ],
     [
-      { text: "👤 Gerenciar Contato & Gerente", callback_data: "btn_gerente" },
-      { text: "🔑 Gerenciar Tokens CPF", callback_data: "btn_tokens" },
+      { text: "👁️ Ver Preview no Site", callback_data: "btn_preview_gerente" },
+      { text: "📊 Métricas & Conversões", callback_data: "btn_metricas" },
     ],
     [
-      { text: "🛡️ Status da Blindagem", callback_data: "btn_blindagem" },
-      { text: "💡 Dicas & Inteligência", callback_data: "btn_ajuda" },
+      { text: "🔑 Tokens API CPF", callback_data: "btn_tokens" },
+      { text: "🔄 Atualizar Painel", callback_data: "menu_principal" },
     ],
   ];
 
