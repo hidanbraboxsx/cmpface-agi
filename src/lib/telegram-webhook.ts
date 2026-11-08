@@ -323,12 +323,6 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
       );
       return true;
     }
-          `Envie o nome que deseja exibir na tela final e nas mensagens (ex: <code>Carlos Eduardo</code>).\n\n` +
-          `❌ Para cancelar, clique no botão abaixo.`,
-        [[{ text: "❌ Cancelar", callback_data: "menu_principal" }]],
-      );
-      return true;
-    }
 
     if (data === "act_change_avatar") {
       currentAdminState = "AWAITING_AVATAR";
@@ -882,10 +876,15 @@ export async function setupTelegramWebhook(
     return { ok: false, description: "TELEGRAM_BOT_TOKEN não configurado nas variáveis de ambiente." };
   }
 
+  const isPublicUrl = (u?: string) =>
+    Boolean(u && u.startsWith("https://") && !u.includes("localhost") && !u.includes("127.0.0.1"));
+
   const host =
-    baseUrl ||
-    process.env["VERCEL_PROJECT_PRODUCTION_URL"] ||
-    process.env["VERCEL_URL"] ||
+    (isPublicUrl(baseUrl) ? baseUrl : undefined) ||
+    (process.env["VERCEL_PROJECT_PRODUCTION_URL"]
+      ? `https://${process.env["VERCEL_PROJECT_PRODUCTION_URL"]}`
+      : undefined) ||
+    (process.env["VERCEL_URL"] ? `https://${process.env["VERCEL_URL"]}` : undefined) ||
     "https://agibankconsult.vercel.app";
 
   const cleanHost = host.startsWith("http") ? host : `https://${host}`;

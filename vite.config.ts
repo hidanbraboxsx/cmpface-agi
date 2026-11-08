@@ -6,7 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-const isVercel = Boolean(process.env.VERCEL || process.env.NOW_BUILDER);
+const isVercel = Boolean(process.env["VERCEL"] || process.env["NOW_BUILDER"]);
 
 export default defineConfig({
   tanstackStart: {
@@ -15,6 +15,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   nitro: {
-    preset: isVercel ? "vercel" : (process.env.NITRO_PRESET || "cloudflare-module"),
+    preset: isVercel ? "vercel" : (process.env["NITRO_PRESET"] || "cloudflare-module"),
   },
 });
