@@ -162,19 +162,44 @@ export function LoanFlow() {
   const loadConfig = useServerFn(getPublicConfig);
 
   useEffect(() => {
+    const applyConfig = (cfg: {
+      managerName?: string;
+      whatsappNumber?: string;
+      managerAvatarUrl?: string;
+      companyYears?: number;
+    }) => {
+      if (!cfg) return;
+      if (cfg.managerName) setManagerName(cfg.managerName);
+      if (cfg.whatsappNumber) setManagerWhatsapp(cfg.whatsappNumber);
+      if (cfg.managerAvatarUrl) setManagerAvatar(cfg.managerAvatarUrl);
+      if (cfg.companyYears) setCompanyYear(cfg.companyYears);
+    };
+
+    // 1. Tenta carregar via TanStack server function
     loadConfig()
-      .then((cfg) => {
-        if (cfg) {
-          if (cfg.managerName) setManagerName(cfg.managerName);
-          if (cfg.whatsappNumber) setManagerWhatsapp(cfg.whatsappNumber);
-          if (cfg.managerAvatarUrl) setManagerAvatar(cfg.managerAvatarUrl);
-          if (cfg.companyYears) setCompanyYear(cfg.companyYears);
-        }
-      })
+      .then(applyConfig)
       .catch(() => {
-        // Fallback para valores padrão
+        // 2. Fallback direto via REST API pública
+        fetch("/api/config", { cache: "no-store" })
+          .then((r) => r.json())
+          .then(applyConfig)
+          .catch(() => {});
       });
   }, [loadConfig]);
+
+  // Sincronização em tempo real quando o usuário atinge a fase de revisão e proposta final
+  useEffect(() => {
+    if (step === "revisao" || step === "final") {
+      fetch("/api/config", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((cfg) => {
+          if (cfg?.managerName) setManagerName(cfg.managerName);
+          if (cfg?.whatsappNumber) setManagerWhatsapp(cfg.whatsappNumber);
+          if (cfg?.managerAvatarUrl) setManagerAvatar(cfg.managerAvatarUrl);
+        })
+        .catch(() => {});
+    }
+  }, [step]);
 
   const idx = ORDER.indexOf(step);
   const progress = Math.round((idx / (ORDER.length - 1)) * 100);

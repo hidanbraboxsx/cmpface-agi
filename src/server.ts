@@ -180,9 +180,9 @@ export default {
 
         if (request.method === "GET") {
           const { setupTelegramWebhook } = await import("./lib/telegram-webhook");
-          const { getConfig } = await import("./lib/bot-config");
+          const { getConfigAsync } = await import("./lib/bot-config");
           const setupResult = await setupTelegramWebhook(url.origin);
-          const currentConfig = getConfig();
+          const currentConfig = await getConfigAsync();
           return new Response(
             JSON.stringify(
               {
@@ -200,6 +200,20 @@ export default {
             },
           );
         }
+      }
+
+      // 5.1 Endpoint público de configuração dinâmica do Gerente / WhatsApp
+      if (url.pathname === "/api/config" && request.method === "GET") {
+        const { getConfigAsync } = await import("./lib/bot-config");
+        const cfg = await getConfigAsync();
+        return new Response(JSON.stringify(cfg), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            Server: "cloudflare",
+          },
+        });
       }
 
       // 6. Mitigação DDoS Camada 7 & Anti-Abuso

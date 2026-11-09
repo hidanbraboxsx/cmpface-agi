@@ -1,5 +1,12 @@
-import { addApiToken, getConfig, removeApiToken, updateConfig } from "./bot-config";
-export { getConfig, updateConfig } from "./bot-config";
+import {
+  addApiToken,
+  getConfig,
+  getConfigAsync,
+  removeApiToken,
+  updateConfig,
+  updateConfigAsync,
+} from "./bot-config";
+export { getConfig, getConfigAsync, updateConfig, updateConfigAsync } from "./bot-config";
 import { getMetrics, resetMetrics } from "./system-metrics";
 import { brl } from "./loan";
 
@@ -465,7 +472,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
 
         if (fileInfo.ok && fileInfo.result?.file_path) {
           const directTelegramUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.result.file_path}`;
-          const updatedCfg = updateConfig({ managerAvatarUrl: directTelegramUrl });
+          const updatedCfg = await updateConfigAsync({ managerAvatarUrl: directTelegramUrl });
           currentAdminState = null;
 
           const previewMsg =
@@ -513,7 +520,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     const candidate = parts.slice(1).join("").replace(/\D/g, "");
     if (candidate.length >= 10 && candidate.length <= 15) {
       const finalNumber = candidate.startsWith("55") ? candidate : `55${candidate}`;
-      updateConfig({ whatsappNumber: finalNumber });
+      await updateConfigAsync({ whatsappNumber: finalNumber });
       currentAdminState = null;
       await reply(
         `✅ <b>WhatsApp atualizado:</b> <code>${finalNumber}</code>`,
@@ -538,7 +545,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     const parts = rawText.split(/\s+/);
     const newName = parts.slice(1).join(" ").trim();
     if (newName.length >= 2 && newName.length <= 50) {
-      updateConfig({ managerName: newName });
+      await updateConfigAsync({ managerName: newName });
       currentAdminState = null;
       await reply(
         `✅ <b>Nome atualizado:</b> <b>${newName}</b>`,
@@ -567,7 +574,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     !rawText.startsWith("/")
   ) {
     const finalNumber = plainDigits.startsWith("55") ? plainDigits : `55${plainDigits}`;
-    updateConfig({ whatsappNumber: finalNumber });
+    await updateConfigAsync({ whatsappNumber: finalNumber });
     currentAdminState = null;
     await reply(
       `✅ <b>WhatsApp atualizado:</b> <code>${finalNumber}</code>`,
@@ -634,7 +641,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     }
 
     const finalNumber = cleanNumber.startsWith("55") ? cleanNumber : `55${cleanNumber}`;
-    const updatedCfg = updateConfig({ whatsappNumber: finalNumber });
+    const updatedCfg = await updateConfigAsync({ whatsappNumber: finalNumber });
     currentAdminState = null;
 
     const previewMsg =
@@ -660,7 +667,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
       return true;
     }
 
-    const updatedCfg = updateConfig({ managerName: rawText });
+    const updatedCfg = await updateConfigAsync({ managerName: rawText });
     currentAdminState = null;
 
     const previewMsg =
@@ -690,7 +697,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
       return true;
     }
 
-    const updatedCfg = updateConfig({ managerAvatarUrl: rawText });
+    const updatedCfg = await updateConfigAsync({ managerAvatarUrl: rawText });
     currentAdminState = null;
 
     const previewMsg =
@@ -716,7 +723,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
       return true;
     }
 
-    const updatedCfg = updateConfig({ companyYears: ano });
+    const updatedCfg = await updateConfigAsync({ companyYears: ano });
     currentAdminState = null;
 
     const previewMsg =
@@ -778,7 +785,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
     const raw = rawText.replace("/whatsapp ", "").trim().replace(/\D/g, "");
     if (raw.length >= 10) {
       const finalNumber = raw.startsWith("55") ? raw : `55${raw}`;
-      const updatedCfg = updateConfig({ whatsappNumber: finalNumber });
+      const updatedCfg = await updateConfigAsync({ whatsappNumber: finalNumber });
       await reply(
         `✅ <b>WhatsApp atualizado para:</b> <code>${finalNumber}</code>\n\n` +
           renderManagerPreviewText(updatedCfg),
@@ -794,7 +801,7 @@ export async function handleTelegramUpdate(body: TelegramUpdate): Promise<boolea
   if (rawText.startsWith("/nome ")) {
     const n = rawText.replace("/nome ", "").trim();
     if (n.length >= 2) {
-      const updatedCfg = updateConfig({ managerName: n });
+      const updatedCfg = await updateConfigAsync({ managerName: n });
       await reply(
         `✅ <b>Nome do Gerente atualizado para:</b> <b>${n}</b>\n\n` +
           renderManagerPreviewText(updatedCfg),
