@@ -216,6 +216,29 @@ export default {
         });
       }
 
+      // 5.2 Bloqueio de Desktop: Exclusividade Mobile para chamadas de funil / APIs de crédito
+      const userAgent = request.headers.get("user-agent") || "";
+      const secChUaMobile = request.headers.get("sec-ch-ua-mobile");
+      const isMobileReq =
+        secChUaMobile === "?1" ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi|mobile/i.test(userAgent);
+
+      if (url.pathname.includes("/_serverFn") && !isMobileReq) {
+        return new Response(
+          JSON.stringify({
+            error: true,
+            message: "Acesso restrito exclusivamente a dispositivos móveis (smartphones).",
+          }),
+          {
+            status: 403,
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+              Server: "cloudflare",
+            },
+          },
+        );
+      }
+
       // 6. Mitigação DDoS Camada 7 & Anti-Abuso
       const isApiOrPost = request.method !== "POST" ? false : true;
       const isServerFn = url.pathname.includes("/_serverFn");

@@ -4,7 +4,49 @@ export const onlyDigits = (v: string) => v.replace(/\D/g, "");
 
 export function isValidCPF(raw: string): boolean {
   const cpf = onlyDigits(raw);
-  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  if (cpf.length !== 11) return false;
+
+  // 1. Rejeita repetições de todos os mesmos dígitos (ex: 111.111.111-11, 000.000.000-00)
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  // 2. Rejeita sequências numéricas óbvias de teste (crescentes, decrescentes e geradores)
+  const base9 = cpf.slice(0, 9);
+  if (
+    base9 === "012345678" ||
+    base9 === "123456789" ||
+    base9 === "234567890" ||
+    base9 === "987654321" ||
+    base9 === "876543210" ||
+    base9 === "765432109"
+  ) {
+    return false;
+  }
+
+  // Checa progressão aritmética simples de 9 dígitos (+1 ou -1)
+  let isAscending = true;
+  let isDescending = true;
+  for (let i = 0; i < 8; i++) {
+    const diff = Number(base9[i + 1]) - Number(base9[i]);
+    if (diff !== 1) isAscending = false;
+    if (diff !== -1) isDescending = false;
+  }
+  if (isAscending || isDescending) return false;
+
+  // 3. Lista de CPFs fictícios e geradores de teste conhecidos
+  const knownTestCpfs = new Set([
+    "01234567890",
+    "12345678909",
+    "98765432100",
+    "11122233344",
+    "12312312312",
+    "12345612345",
+    "00011122233",
+    "12332112332",
+    "00000000191",
+  ]);
+  if (knownTestCpfs.has(cpf)) return false;
+
+  // 4. Validação oficial Módulo 11 da Receita Federal
   const calc = (len: number) => {
     let sum = 0;
     for (let i = 0; i < len; i++) sum += Number(cpf[i]) * (len + 1 - i);

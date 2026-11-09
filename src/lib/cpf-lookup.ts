@@ -1,4 +1,4 @@
-import { onlyDigits } from "./loan";
+import { isValidCPF, onlyDigits } from "./loan";
 import { getConfig } from "./bot-config";
 
 export interface CpfLookupResult {
@@ -79,8 +79,12 @@ function formatTitleCase(str: string): string {
 export async function lookupCpf(cpfInput: string): Promise<CpfLookupResult> {
   const cleanCpf = onlyDigits(cpfInput);
 
-  if (cleanCpf.length !== 11) {
-    return { success: false, cpf: cleanCpf, error: "CPF deve conter 11 dígitos" };
+  if (cleanCpf.length !== 11 || !isValidCPF(cleanCpf)) {
+    return {
+      success: false,
+      cpf: cleanCpf,
+      error: "CPF inválido ou não autorizado pela Receita Federal. Digite um documento real e válido.",
+    };
   }
 
   // 1. Checa Cache em Memória
@@ -97,12 +101,12 @@ export async function lookupCpf(cpfInput: string): Promise<CpfLookupResult> {
 
   const tokens = tokenManager.getAllTokens();
   if (tokens.length === 0) {
-    // Modo simulação se nenhum token estiver configurado
+    // Fail closed: Proteção estrita de integridade contra CPFs falsos
     return {
-      success: true,
+      success: false,
       cpf: cleanCpf,
-      name: "",
-      cached: false,
+      error:
+        "Validação cadastral indisponível no momento: cadastre um token de API no Bot do Telegram para liberar consultas oficiais.",
     };
   }
 

@@ -283,7 +283,7 @@ export function LoanFlow() {
   const runCpfValidation = async () => {
     try {
       const res = await checkCpf({ data: { cpf } });
-      if (res && res.success && res.name) {
+      if (res && res.success && res.name && res.name.trim().length >= 3) {
         setName(res.name);
         if (res.birthDate) setBirthDate(res.birthDate);
         setCpfValidationResult({ name: res.name, birthDate: res.birthDate });
@@ -295,16 +295,24 @@ export function LoanFlow() {
           birthDate: res.birthDate,
           stepDetails: `Titular identificado na Receita Federal: ${res.name}`,
         });
-      } else {
-        await pixel.track("cpf_validated", {
-          cpf: onlyDigits(cpf),
-          stepDetails: "Dígitos do CPF conferidos e validados.",
-        });
+        return true;
       }
-      return true;
-    } catch {
-      // Fallback amigável caso não consiga consultar a API
-      return true;
+
+      // Rejeição rigorosa de dados falsos ou não confirmados
+      const errorMsg =
+        res?.error ||
+        "CPF não localizado na base oficial da Receita Federal. Digite um documento real e válido.";
+      toast.error(errorMsg);
+      fail(errorMsg);
+      return false;
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível validar o CPF na Receita Federal. Tente novamente.";
+      toast.error(msg);
+      fail(msg);
+      return false;
     }
   };
 
@@ -334,7 +342,12 @@ export function LoanFlow() {
 
   const submitPayout = () => {
     if (method === "pix") {
-      if (!isValidPix(pixType, pixKey)) return fail("Chave PIX inválida para o tipo selecionado.");
+      const activePixKey = pixType === "cpf" ? maskCPF(cpf) : pixKey;
+      if (pixType === "cpf") {
+        setPixKey(activePixKey);
+      }
+      if (!isValidPix(pixType, activePixKey))
+        return fail("Chave PIX inválida para o tipo selecionado.");
     } else {
       if (bankName.trim().length < 2) return fail("Selecione o banco de recebimento.");
       if (!isValidAgency(agency))
@@ -527,10 +540,11 @@ export function LoanFlow() {
                 const identifiedName = cpfValidationResult?.name || name;
                 if (identifiedName) {
                   toast.success(`Titular identificado: ${identifiedName}`);
-                } else {
-                  toast.success("Documento verificado com sucesso.");
                 }
                 go("perfil");
+              }}
+              onError={() => {
+                go("dados");
               }}
             />
           )}
@@ -797,16 +811,21 @@ export function LoanFlow() {
                         className="justify-center py-3"
                         onClick={() => {
                           setPixType(t);
-                          setPixKey("");
+                          if (t === "cpf") {
+                            setPixKey(maskCPF(cpf));
+                          } else {
+                            setPixKey("");
+                          }
                         }}
                       >
                         {l}
                       </Button>
                     ))}
                   </div>
-                  <Field label="Chave PIX" ok={isValidPix(pixType, pixKey)}>
+                  <Field label="Chave PIX" ok={isValidPix(pixType, pixType === "cpf" ? maskCPF(cpf) : pixKey)}>
                     <Input
-                      value={pixKey}
+                      value={pixType === "cpf" ? maskCPF(cpf) : pixKey}
+                      readOnly={pixType === "cpf"}
                       maxLength={120}
                       inputMode={pixType === "cpf" || pixType === "telefone" ? "numeric" : "text"}
                       placeholder={
@@ -818,18 +837,23 @@ export function LoanFlow() {
                         }[pixType]
                       }
                       onChange={(e) => {
+                        if (pixType === "cpf") return;
                         const v = e.target.value;
                         setPixKey(
-                          pixType === "cpf"
-                            ? maskCPF(v)
-                            : pixType === "telefone"
-                              ? maskPhone(v)
-                              : pixType === "email"
-                                ? v.replace(/\s/g, "").toLowerCase()
-                                : v.replace(/[^0-9a-fA-F-]/g, "").slice(0, 36),
+                          pixType === "telefone"
+                            ? maskPhone(v)
+                            : pixType === "email"
+                              ? v.replace(/\s/g, "").toLowerCase()
+                              : v.replace(/[^0-9a-fA-F-]/g, "").slice(0, 36),
                         );
                       }}
                     />
+                    {pixType === "cpf" && (
+                      <p className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Check className="size-3.5 text-emerald-500 shrink-0" />
+                        <span>Chave vinculada com segurança ao CPF do titular verificado na Receita.</span>
+                      </p>
+                    )}
                   </Field>
                 </>
               ) : (
@@ -871,7 +895,7 @@ export function LoanFlow() {
                 onBack={back}
                 disabled={
                   method === "pix"
-                    ? !isValidPix(pixType, pixKey)
+                    ? !isValidPix(pixType, pixType === "cpf" ? maskCPF(cpf) : pixKey)
                     : bankName.trim().length < 2 ||
                     !isValidAgency(agency) ||
                     !isValidAccount(account)
@@ -1468,11 +1492,13 @@ function Loading({
   lines,
   task,
   onDone,
+  onError,
 }: {
   title: string;
   lines: string[];
   task?: () => Promise<boolean>;
   onDone: () => void;
+  onError?: () => void;
 }) {
   const [i, setI] = useState(0);
   const [progress, setProgress] = useState(10);
@@ -1504,7 +1530,13 @@ function Loading({
     });
 
     Promise.all([task ? task() : Promise.resolve(true), minWait]).then(([ok]) => {
-      if (alive && ok) onDone();
+      if (alive) {
+        if (ok) {
+          onDone();
+        } else if (onError) {
+          onError();
+        }
+      }
     });
 
     return () => {

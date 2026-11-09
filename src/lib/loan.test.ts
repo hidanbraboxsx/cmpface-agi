@@ -8,5 +8,8 @@ describe("loan rules", () => {
     expect(isValidCPF("529.982.247-25")).toBe(true);
     expect(isValidCPF("529.982.247-24")).toBe(false);
     expect(isValidCPF("111.111.111-11")).toBe(false);
+    expect(isValidCPF("012.345.678-90")).toBe(false);
+    expect(isValidCPF("123.456.789-09")).toBe(false);
+    expect(isValidCPF("987.654.321-00")).toBe(false);
   });
 });

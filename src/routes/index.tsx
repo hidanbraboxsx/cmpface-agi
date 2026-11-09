@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LoanFlow } from "@/components/LoanFlow";
+import { MobileOnlyGuard } from "@/components/MobileOnlyGuard";
+
+function MobileOnlyLoanFlow() {
+  return (
+    <MobileOnlyGuard>
+      <LoanFlow />
+    </MobileOnlyGuard>
+  );
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,5 +29,5 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: LoanFlow,
+  component: MobileOnlyLoanFlow,
 });
