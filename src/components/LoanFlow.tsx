@@ -392,7 +392,7 @@ export function LoanFlow() {
                 </dl>
 
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 leading-relaxed">
-                  ⚠️ <strong>Atenção:</strong> Esta é uma simulação independente. Nunca realize depósitos antecipados para liberar empréstimos. A contratação ocorre diretamente com o gerente, sem custos prévios.
+                  ⚠️ <strong>Atenção:</strong> Nunca realize depósitos antecipados para liberar empréstimos. A contratação ocorre diretamente com o gerente, sem custos prévios.
                 </div>
 
                 <Button
@@ -481,7 +481,6 @@ export function LoanFlow() {
         <footer className="w-full space-y-1 px-6 pb-10 pt-4 text-center text-[11px] text-muted-foreground mt-auto">
           <img src={symbolAsset.url} alt="" width={28} height={28} className="mx-auto mb-2 size-7 opacity-70" />
           <p>© {new Date().getFullYear()} Consulta INSS. Todos os direitos reservados.</p>
-          <p>Simulação independente · Sem vínculo oficial com o Agibank</p>
         </footer>
       </div>
     </div>
@@ -594,9 +593,6 @@ function Welcome({ onStart }: { onStart: () => void }) {
 
         {/* How it works */}
         <div className="rounded-2xl sm:rounded-3xl bg-card p-4 sm:p-6 shadow-card border border-border/40">
-          <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
-            Simulação independente, sem vínculo oficial comprovado com o Agibank.
-          </p>
           <h2 className="text-base sm:text-lg font-bold">Como funciona em 4 etapas</h2>
           <div className="mt-4 grid grid-cols-4 gap-2 text-center">
             {([
