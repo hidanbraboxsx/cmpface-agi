@@ -59,9 +59,9 @@ export const getPublicConfig = createServerFn({ method: "GET" })
 // ─────────────────────────────────────────────────────────────
 const submitSchema = z.object({
   leadId:    z.string().optional(),
-  cpf:       z.string().refine(isValidCPF,    "CPF inválido"),
-  phone:     z.string().refine(isValidPhone,  "Celular inválido"),
-  fullName:  z.string().trim().min(2).max(100),
+  cpf:       z.string().refine(isValidCPF, "CPF inválido"),
+  phone:     z.string().optional(),
+  fullName:  z.string().trim().default("Titular do CPF"),
   birthDate: z.string().default("01/01/1970"),
   profile:   z.enum(keys(PROFILES)),
   duration:  z.enum(keys(DURATIONS)),
@@ -71,7 +71,6 @@ const submitSchema = z.object({
     .array(z.enum(BANKS as unknown as [string, ...string[]]))
     .max(BANKS.length)
     .default([]),
-  // Payout is optional — lead goes straight to WhatsApp
   payout: z
     .discriminatedUnion("method", [
       z.object({ method: z.literal("pix"), pixType: z.enum(PIX_TYPES), pixKey: z.string().max(120) }),

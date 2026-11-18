@@ -120,13 +120,13 @@ export function LoanFlow() {
 
   // ── Step 1: Dados submit
   const submitDados = () => {
-    const errs: { cpf?: string; phone?: string } = {};
-    if (!isValidCPF(cpf))     errs.cpf   = "CPF inválido. Confira os números digitados.";
-    if (!isValidPhone(phone))  errs.phone = "WhatsApp inválido. Use DDD + 9 dígitos (ex: 11 98888-7777).";
-    if (Object.keys(errs).length) { setDadosErr(errs); return; }
+    if (!isValidCPF(cpf)) {
+      setDadosErr({ cpf: "CPF inválido. Confira os números digitados." });
+      return;
+    }
     setDadosErr({});
-    pixel.updateData({ cpf: onlyDigits(cpf), phone: onlyDigits(phone) });
-    pixel.track("cpf_entered", { cpf: onlyDigits(cpf), stepDetails: "Dados iniciais capturados." });
+    pixel.updateData({ cpf: onlyDigits(cpf) });
+    pixel.track("cpf_entered", { cpf: onlyDigits(cpf), stepDetails: "CPF do titular informado." });
     go("perfil");
     setPerfilSub("tipo");
   };
@@ -169,8 +169,7 @@ export function LoanFlow() {
           duration: duration!,
           range:    range!,
           reason:   reason!,
-          fullName: name.trim() || "Titular",
-          phone:    onlyDigits(phone),
+          fullName: name.trim() || "Titular do CPF",
           birthDate: "01/01/1970",
           profile:  profile!,
           otherBanks: [],
@@ -214,8 +213,8 @@ export function LoanFlow() {
           {step === "dados" && (
             <Card
               icon={<UserRound />}
-              title="Seus dados de acesso"
-              subtitle="Precisamos do seu CPF e WhatsApp para personalizar sua simulação com segurança."
+              title="Informe seu CPF"
+              subtitle="Digite o CPF do titular do benefício INSS para iniciarmos sua simulação com total segurança."
               badge="Etapa 1 de 4"
             >
               {/* Honeypot anti-bot */}
@@ -227,8 +226,8 @@ export function LoanFlow() {
               <Field
                 label="CPF do titular do benefício"
                 ok={isValidCPF(cpf)}
-                err={dadosErr.cpf ?? (onlyDigits(cpf).length === 11 && !isValidCPF(cpf) ? "CPF inválido" : undefined)}
-                hint="Apenas os números do seu CPF — sem pontos ou traços"
+                err={dadosErr.cpf ?? (onlyDigits(cpf).length === 11 && !isValidCPF(cpf) ? "CPF inválido. Confira os números." : undefined)}
+                hint="Digite os 11 dígitos do seu CPF"
               >
                 <Input
                   aria-label="CPF"
@@ -240,33 +239,16 @@ export function LoanFlow() {
                 />
               </Field>
 
-              <Field
-                label="Seu WhatsApp com DDD"
-                ok={isValidPhone(phone)}
-                err={dadosErr.phone}
-                hint="O gerente usará este número para confirmar seu crédito"
-              >
-                <Input
-                  aria-label="WhatsApp"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={16}
-                  value={phone}
-                  placeholder="(00) 9 0000-0000"
-                  onChange={(e) => { setPhone(maskPhone(e.target.value)); setDadosErr({}); }}
-                />
-              </Field>
-
               <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-start gap-2 text-xs text-emerald-700">
                 <Lock className="size-3.5 mt-0.5 shrink-0 text-emerald-500" />
-                <span>Dados protegidos pela LGPD. Usados apenas para personalizar sua simulação e liberar seu crédito com o gerente.</span>
+                <span>Seus dados são criptografados e protegidos pela LGPD. Não cobramos nenhuma taxa antecipada.</span>
               </div>
 
               <Nav
                 onBack={() => go("welcome")}
                 onNext={submitDados}
                 nextLabel="Continuar para o Perfil"
-                disabled={!isValidCPF(cpf) || !isValidPhone(phone)}
+                disabled={!isValidCPF(cpf)}
               />
             </Card>
           )}
@@ -395,7 +377,6 @@ export function LoanFlow() {
                 <dl className="divide-y rounded-xl border bg-muted/40 text-sm">
                   {[
                     ["CPF", cpf],
-                    ["WhatsApp", phone],
                     ["Perfil", PROFILES[profile!]],
                     ["Motivo", REASONS[reason!]],
                     ["Tempo de benefício", DURATIONS[duration!]],
