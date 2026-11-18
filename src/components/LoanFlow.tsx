@@ -634,7 +634,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
 function Card({
   icon, title, subtitle, badge, children,
 }: {
-  icon: ReactNode; title: string; subtitle?: string; badge?: string; children: ReactNode;
+  icon: ReactNode; title: string; subtitle?: string | undefined; badge?: string | undefined; children: ReactNode;
 }) {
   return (
     <section className="animate-rise min-w-0 space-y-5 rounded-3xl bg-card p-6 shadow-card border border-border/30">
@@ -660,7 +660,7 @@ function Card({
 function Field({
   label, ok, err, hint, children,
 }: {
-  label: string; ok?: boolean; err?: string; hint?: string; children: ReactNode;
+  label: string; ok?: boolean | undefined; err?: string | undefined; hint?: string | undefined; children: ReactNode;
 }) {
   return (
     <label className="block space-y-1.5">
@@ -679,7 +679,7 @@ function Field({
 function Choices<K extends string>({
   icon, title, subtitle, badge, options, value, onPick, onBack,
 }: {
-  icon: ReactNode; title: string; subtitle?: string; badge?: string;
+  icon: ReactNode; title: string; subtitle?: string | undefined; badge?: string | undefined;
   options: Record<K, string>; value: K | null;
   onPick: (k: K) => void; onBack: () => void;
 }) {
@@ -711,7 +711,7 @@ function Choices<K extends string>({
 function Nav({
   onBack, onNext, nextLabel = "Continuar", disabled,
 }: {
-  onBack: () => void; onNext: () => void; nextLabel?: string; disabled?: boolean;
+  onBack: () => void; onNext: () => void; nextLabel?: string | undefined; disabled?: boolean | undefined;
 }) {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 pt-2">
@@ -737,7 +737,7 @@ function Nav({
 function Loading({
   title, lines, task, onDone,
 }: {
-  title: string; lines: string[]; task?: () => Promise<boolean>; onDone: () => void;
+  title: string; lines: string[]; task?: (() => Promise<boolean>) | undefined; onDone: () => void;
 }) {
   const [i, setI]           = useState(0);
   const [progress, setProgress] = useState(10);
