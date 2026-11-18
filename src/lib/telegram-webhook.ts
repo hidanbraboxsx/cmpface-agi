@@ -18,7 +18,7 @@ let currentAdminState: AdminExpectation = null;
 function renderManagerPreviewText(cfg: ReturnType<typeof getConfig>): string {
   const sampleAmount = 18450.0;
   const sampleProtocol = "AGI" + Math.floor(100000 + Math.random() * 900000);
-  const waUrl = `https://wa.me/${cfg.whatsappNumber}?text=Olá,%20${encodeURIComponent(cfg.managerName)}!`;
+  const waUrl = `https://wa.me/${cfg.whatsappNumber}?text=${encodeURIComponent("Preciso de um atendimento Humanizado de AgiBank")}`;
 
   return [
     `<b>📱 PREVIEW REAL DA TELA DO CLIENTE (ETAPA DO GERENTE)</b>`,

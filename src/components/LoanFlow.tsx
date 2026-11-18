@@ -184,14 +184,10 @@ export function LoanFlow() {
 
   // WhatsApp link with pre-filled message
   const waLink = useMemo(() => {
-    const valor = result ? brl(result.amount) : "valor estimado";
-    const msg =
-      `Olá, ${managerName}! Meu CPF termina em ${onlyDigits(cpf).slice(-3)}. ` +
-      `Concluí a simulação do empréstimo consignado INSS pelo Agibank. ` +
-      `Valor disponível: ${valor}. Protocolo: ${protocol}. ` +
-      `Gostaria de dar continuidade ao meu crédito.`;
-    return `https://wa.me/${managerWhatsapp}?text=${encodeURIComponent(msg)}`;
-  }, [cpf, protocol, result, managerName, managerWhatsapp]);
+    const msg = "Preciso de um atendimento Humanizado de AgiBank";
+    const cleanNumber = onlyDigits(managerWhatsapp);
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(msg)}`;
+  }, [managerWhatsapp]);
 
   // ─────────────────────────────────────────────────────────────
   // Render
@@ -436,8 +432,19 @@ export function LoanFlow() {
                     Clique abaixo para me chamar agora no WhatsApp e darmos continuidade à liberação do seu crédito.
                   </p>
 
-                  <a href={waLink} target="_blank" rel="noopener noreferrer" className="block mt-6">
-                    <Button variant="hero" size="xl" className="w-full text-base font-bold h-14 gap-2">
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mt-6"
+                    onClick={() => {
+                      pixel.track("whatsapp_clicked", {
+                        cpf: onlyDigits(cpf),
+                        stepDetails: "Lead iniciou atendimento humanizado no WhatsApp.",
+                      });
+                    }}
+                  >
+                    <Button variant="hero" size="xl" className="w-full text-base font-bold h-14 gap-2 shadow-lg active:scale-[0.99] transition-all">
                       <MessageSquare className="size-5" />
                       Chamar {managerName} no WhatsApp
                     </Button>
@@ -463,15 +470,7 @@ export function LoanFlow() {
                 ))}
               </div>
 
-              {/* Repeat CTA */}
-              <a href={waLink} target="_blank" rel="noopener noreferrer" className="block">
-                <Button variant="hero" size="xl" className="w-full h-14 text-base font-bold gap-2">
-                  <MessageSquare className="size-5" />
-                  Ir para o WhatsApp agora
-                </Button>
-              </a>
-
-              <p className="text-center text-[11px] text-muted-foreground leading-relaxed px-4">
+              <p className="text-center text-[11px] text-muted-foreground leading-relaxed px-4 pt-2">
                 Protocolo: <strong>{protocol}</strong> · Valor estimado: <strong>{result && brl(result.amount)}</strong>
               </p>
             </div>
