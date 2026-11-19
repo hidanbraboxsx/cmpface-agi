@@ -615,7 +615,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
             })}
           </div>
           <Button variant="hero" size="xl" className="mt-5 w-full text-sm font-bold h-13" onClick={onStart}>
-            Começar simulação gratuita <ArrowRight className="size-4" />
+            Começar Consulta <ArrowRight className="size-4" />
           </Button>
         </div>
       </div>
