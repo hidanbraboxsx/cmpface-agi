@@ -176,7 +176,9 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
     if (data === "btn_preview_gerente") {
       const cfg = getConfig();
       const msg = renderManagerPreviewText(cfg);
+      const waUrl = `https://wa.me/${cfg.whatsappNumber}?text=${encodeURIComponent("Preciso de um atendimento Humanizado de AgiBank")}`;
       const keyboard = [
+        [{ text: "💬 Testar Ação do WhatsApp (Como o Lead Vê)", url: waUrl }],
         [
           { text: "✏️ Alterar WhatsApp", callback_data: "act_change_whatsapp" },
           { text: "✏️ Alterar Nome", callback_data: "act_change_name" },
@@ -193,6 +195,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
 
     if (data === "btn_gerente") {
       const cfg = getConfig();
+      const waUrl = `https://wa.me/${cfg.whatsappNumber}?text=${encodeURIComponent("Preciso de um atendimento Humanizado de AgiBank")}`;
       const msg = [
         `<b>👤 GESTÃO DO PERFIL DO GERENTE & CONTATO</b>`,
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
@@ -206,6 +209,7 @@ export async function handleTelegramUpdate(body: any): Promise<boolean> {
 
       const keyboard = [
         [{ text: "👁️ Ver Preview Real da Tela", callback_data: "btn_preview_gerente" }],
+        [{ text: "💬 Testar WhatsApp do Gerente", url: waUrl }],
         [
           { text: "✏️ Alterar WhatsApp", callback_data: "act_change_whatsapp" },
           { text: "✏️ Alterar Nome", callback_data: "act_change_name" },

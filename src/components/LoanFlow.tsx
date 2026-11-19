@@ -53,9 +53,10 @@ const STAGES: { label: string; steps: Step[] }[] = [
 
 // ─────────────────────────────────────────────────────────────
 // Perfil sub-steps (gerenciados internamente no step "perfil")
+// Reduzido para 2 passos ultra-rápidos e inteligentes
 // ─────────────────────────────────────────────────────────────
-type PerfilSub = "tipo" | "motivo" | "tempo" | "faixa";
-const PERFIL_SUBS: PerfilSub[] = ["tipo", "motivo", "tempo", "faixa"];
+type PerfilSub = "tipo" | "faixa";
+const PERFIL_SUBS: PerfilSub[] = ["tipo", "faixa"];
 
 export function LoanFlow() {
   // ── Navigation
@@ -131,13 +132,18 @@ export function LoanFlow() {
     setPerfilSub("tipo");
   };
 
-  // ── Step 2: Perfil — advance sub-step
-  const pickPerfil = (v: Profile)   => { setProfile(v);  setPerfilSub("motivo"); };
-  const pickMotivo = (v: Reason)    => { setReason(v);   setPerfilSub("tempo");  };
-  const pickTempo  = (v: Duration)  => { setDuration(v); setPerfilSub("faixa");  };
-  const pickFaixa  = (v: Range)     => {
+  // ── Step 2: Perfil — advance sub-step (2 passos inteligentes para máxima conversão)
+  const pickPerfil = (v: Profile) => {
+    setProfile(v);
+    const inferredReason: Reason = v === "pensionista" ? "pensao_morte" : "idade";
+    setReason(inferredReason);
+    setDuration("3a5");
+    setPerfilSub("faixa");
+  };
+
+  const pickFaixa = (v: Range) => {
     setRange(v);
-    pixel.track("faixa_selected", { cpf: onlyDigits(cpf), stepDetails: "Perfil completo." });
+    pixel.track("faixa_selected", { cpf: onlyDigits(cpf), stepDetails: "Perfil simplificado concluído." });
     go("analise");
   };
 
@@ -249,51 +255,27 @@ export function LoanFlow() {
             </Card>
           )}
 
-          {/* ── ETAPA 2: PERFIL ───────────────────────────── */}
+          {/* ── ETAPA 2: PERFIL (SIMPLIFICADO EM 2 PASSOS) ─── */}
           {step === "perfil" && (
             <>
               {perfilSub === "tipo" && (
                 <Choices
                   icon={<BadgeCheck />}
-                  title="Qual é o seu vínculo com o INSS?"
-                  subtitle="Selecione o tipo de benefício que você recebe mensalmente."
-                  badge="Etapa 2 de 4 · Passo 1/4"
+                  title="Qual é o seu tipo de benefício no INSS?"
+                  subtitle="Selecione como você recebe seu benefício para identificarmos as melhores taxas."
+                  badge="Etapa 2 de 4 · Passo 1/2"
                   options={PROFILES}
                   value={profile}
                   onPick={pickPerfil}
                   onBack={back}
                 />
               )}
-              {perfilSub === "motivo" && (
-                <Choices
-                  icon={<FileCheck2 />}
-                  title="Qual o motivo do seu benefício?"
-                  subtitle="Essa informação define as condições do empréstimo consignado disponíveis para você."
-                  badge="Etapa 2 de 4 · Passo 2/4"
-                  options={REASONS}
-                  value={reason}
-                  onPick={pickMotivo}
-                  onBack={back}
-                />
-              )}
-              {perfilSub === "tempo" && (
-                <Choices
-                  icon={<Clock />}
-                  title="Há quanto tempo você recebe este benefício?"
-                  subtitle="O tempo de recebimento influencia diretamente no valor liberado para você."
-                  badge="Etapa 2 de 4 · Passo 3/4"
-                  options={DURATIONS}
-                  value={duration}
-                  onPick={pickTempo}
-                  onBack={back}
-                />
-              )}
               {perfilSub === "faixa" && (
                 <Choices
                   icon={<Wallet />}
-                  title="Qual a faixa do seu benefício líquido?"
-                  subtitle="Informe o valor que cai mensalmente na sua conta, conforme consta no seu extrato do INSS."
-                  badge="Etapa 2 de 4 · Passo 4/4"
+                  title="Qual o valor líquido do seu benefício?"
+                  subtitle="Informe a faixa aproximada do valor que você recebe mensalmente."
+                  badge="Etapa 2 de 4 · Passo 2/2"
                   options={RANGES}
                   value={range}
                   onPick={pickFaixa}
@@ -374,8 +356,6 @@ export function LoanFlow() {
                   {[
                     ["CPF", cpf],
                     ["Perfil", PROFILES[profile!]],
-                    ["Motivo", REASONS[reason!]],
-                    ["Tempo de benefício", DURATIONS[duration!]],
                     ["Faixa do benefício", RANGES[range!]],
                     ["Score ilustrativo", `${result.score} pts · ${scoreLabel(result.score)}`],
                     ["Valor estimado", brl(result.amount)],

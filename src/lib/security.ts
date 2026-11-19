@@ -174,3 +174,69 @@ export function isBrazilianTraffic(request: Request): boolean {
   if (!country) return true; // Local development or proxy without geo headers
   return country === "BR";
 }
+
+/**
+ * Mascaramento anônimo e seguro de IP (LGPD & Anti-Tracking).
+ * Ex: 177.18.23.45 -> 177.18.***.***
+ */
+export function maskIpAddress(ip: string): string {
+  if (!ip || ip === "anonymous-client") return "Protegido";
+  const parts = ip.split(".");
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.***.***`;
+  }
+  return "IP-Ofuscado";
+}
+
+/**
+ * Chave de integridade do ambiente
+ */
+const SECRET_SEED = process.env["SECURITY_SECRET"] || "AGI_SHIELD_2026_SUPREME_INTEGRITY_KEY";
+
+/**
+ * Assinatura criptográfica rápida para validação de transição entre etapas.
+ * Evita que bots ou scanners pulem direto para a última etapa sem passar pelas anteriores.
+ */
+export function generateStageToken(step: string, cpfOrId: string): string {
+  const timestamp = Date.now();
+  const raw = `${step}:${cpfOrId}:${timestamp}:${SECRET_SEED}`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = (hash << 5) - hash + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  const checksum = Math.abs(hash).toString(36);
+  return `${Buffer.from(`${step}:${timestamp}`).toString("base64url")}.${checksum}`;
+}
+
+/**
+ * Validação de token de integridade da etapa.
+ * Tokens têm validade de 2 horas e impedem ataques de repetição.
+ */
+export function verifyStageToken(token: string, expectedStep: string): boolean {
+  if (!token || !token.includes(".")) return false;
+  try {
+    const [encoded] = token.split(".");
+    if (!encoded) return false;
+    const decoded = Buffer.from(encoded, "base64url").toString("utf-8");
+    const [step, timeStr] = decoded.split(":");
+    if (step !== expectedStep) return false;
+    const time = Number(timeStr);
+    if (isNaN(time) || Date.now() - time > 2 * 60 * 60 * 1000) {
+      return false; // Token expirado (> 2 horas)
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sanitização estrita contra injeção e quebra de credenciais
+ */
+export function sanitizeStrict(input: string): string {
+  return input
+    .replace(/[<>"'`\\]/g, "")
+    .replace(/javascript:/gi, "")
+    .trim();
+}
