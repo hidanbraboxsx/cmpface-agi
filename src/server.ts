@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { checkRateLimit, extractClientIp, detectMaliciousPayloadOrScanner, isBrazilianTraffic } from "./lib/security";
+import { handleTelegramUpdate } from "./lib/telegram-webhook";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -81,7 +82,6 @@ export default {
         if (request.method === "POST") {
           try {
             const body = await request.json();
-            const { handleTelegramUpdate } = await import("./lib/telegram-webhook");
             await handleTelegramUpdate(body);
             return new Response(JSON.stringify({ ok: true }), {
               status: 200,
@@ -89,7 +89,7 @@ export default {
             });
           } catch (err) {
             console.error("[Telegram Webhook] Erro:", err);
-            return new Response(JSON.stringify({ ok: false }), {
+            return new Response(JSON.stringify({ ok: false, error: String(err) }), {
               status: 200,
               headers: { "Content-Type": "application/json" },
             });
