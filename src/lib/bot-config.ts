@@ -1,4 +1,7 @@
 // Configurações Dinâmicas Gerenciadas pelo Bot do Telegram (Admin Supremo)
+// Cloudflare Workers — sem filesystem. Estado mantido em memória do isolate
+// (persiste enquanto o worker está quente) + env vars como defaults.
+
 export interface DynamicConfig {
   whatsappNumber: string;
   managerName: string;
@@ -7,78 +10,70 @@ export interface DynamicConfig {
   apiTokens: string[];
 }
 
-import fs from "fs";
-import path from "path";
-
-// Valores padrão
-const CONFIG_FILE = path.resolve(process.cwd(), ".bot-config.json");
-
-function loadPersistedConfig(): Partial<DynamicConfig> {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const content = fs.readFileSync(CONFIG_FILE, "utf-8");
-      return JSON.parse(content);
-    }
-  } catch (e) {
-    console.error("[Bot Config] Falha ao carregar .bot-config.json:", e);
-  }
-  return {};
-}
-
-function savePersistedConfig(cfg: DynamicConfig) {
-  try {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf-8");
-  } catch (e) {
-    console.error("[Bot Config] Falha ao salvar .bot-config.json:", e);
-  }
-}
-
-const persisted = loadPersistedConfig();
-
-const activeConfig: DynamicConfig = {
-  whatsappNumber: persisted.whatsappNumber || "5518982719536",
-  managerName: persisted.managerName || "Lucas Cardoso",
-  managerAvatarUrl: persisted.managerAvatarUrl || "/images/agi/manager.jpg",
-  companyYears: persisted.companyYears || new Date().getFullYear(),
-  apiTokens: persisted.apiTokens || [],
+// ─── Estado global no isolate (sobrevive entre requests no mesmo worker) ───
+const _cfg: DynamicConfig = {
+  whatsappNumber: "",
+  managerName: "",
+  managerAvatarUrl: "",
+  companyYears: 0,
+  apiTokens: [],
 };
 
-// Inicializa tokens a partir do process.env caso existam e não estejam no arquivo
-if (typeof process !== "undefined" && process.env) {
-  const envTokens = (process.env["HUB_DEVELOPER_TOKENS"] || process.env["HUB_DEVELOPER_TOKEN"] || "")
+let _initialized = false;
+
+function ensureInit() {
+  if (_initialized) return;
+  _initialized = true;
+
+  // Lê env vars como valores iniciais (definidos na Cloudflare dashboard)
+  const env: Record<string, string | undefined> =
+    typeof process !== "undefined" && process.env ? process.env : {};
+
+  _cfg.whatsappNumber =
+    (env["MANAGER_WHATSAPP"] || env["DEFAULT_WHATSAPP"] || "5518982719536").trim();
+
+  _cfg.managerName =
+    (env["MANAGER_NAME"] || "Lucas Cardoso").trim();
+
+  _cfg.managerAvatarUrl =
+    (env["MANAGER_AVATAR_URL"] || "/images/agi/manager.jpg").trim();
+
+  _cfg.companyYears =
+    parseInt(env["COMPANY_YEAR"] || String(new Date().getFullYear()), 10);
+
+  const rawTokens = env["HUB_DEVELOPER_TOKENS"] || env["HUB_DEVELOPER_TOKEN"] || "";
+  _cfg.apiTokens = rawTokens
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
-  if (envTokens.length > 0 && activeConfig.apiTokens.length === 0) {
-    activeConfig.apiTokens = envTokens;
-  }
 }
 
 export function getConfig(): DynamicConfig {
-  return { ...activeConfig };
+  ensureInit();
+  return { ..._cfg, apiTokens: [..._cfg.apiTokens] };
 }
 
 export function updateConfig(partial: Partial<DynamicConfig>): DynamicConfig {
-  if (partial.whatsappNumber !== undefined) activeConfig.whatsappNumber = partial.whatsappNumber;
-  if (partial.managerName !== undefined) activeConfig.managerName = partial.managerName;
-  if (partial.managerAvatarUrl !== undefined) activeConfig.managerAvatarUrl = partial.managerAvatarUrl;
-  if (partial.companyYears !== undefined) activeConfig.companyYears = partial.companyYears;
-  if (partial.apiTokens !== undefined) activeConfig.apiTokens = [...partial.apiTokens];
-  savePersistedConfig(activeConfig);
-  return { ...activeConfig };
+  ensureInit();
+  if (partial.whatsappNumber !== undefined) _cfg.whatsappNumber = partial.whatsappNumber;
+  if (partial.managerName    !== undefined) _cfg.managerName    = partial.managerName;
+  if (partial.managerAvatarUrl !== undefined) _cfg.managerAvatarUrl = partial.managerAvatarUrl;
+  if (partial.companyYears   !== undefined) _cfg.companyYears   = partial.companyYears;
+  if (partial.apiTokens      !== undefined) _cfg.apiTokens      = [...partial.apiTokens];
+  return getConfig();
 }
 
 export function addApiToken(token: string): string[] {
+  ensureInit();
   const clean = token.trim();
-  if (clean && !activeConfig.apiTokens.includes(clean)) {
-    activeConfig.apiTokens.push(clean);
-    savePersistedConfig(activeConfig);
+  if (clean && !_cfg.apiTokens.includes(clean)) {
+    _cfg.apiTokens.push(clean);
   }
-  return [...activeConfig.apiTokens];
+  return [..._cfg.apiTokens];
 }
 
 export function removeApiToken(token: string): string[] {
-  activeConfig.apiTokens = activeConfig.apiTokens.filter((t) => t !== token.trim());
-  savePersistedConfig(activeConfig);
-  return [...activeConfig.apiTokens];
+  ensureInit();
+  _cfg.apiTokens = _cfg.apiTokens.filter((t) => t !== token.trim());
+  return [..._cfg.apiTokens];
 }
