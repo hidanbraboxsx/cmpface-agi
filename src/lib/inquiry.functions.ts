@@ -44,8 +44,8 @@ export const evaluateInquiry = createServerFn({ method: "POST" })
 // ─────────────────────────────────────────────────────────────
 export const getPublicConfig = createServerFn({ method: "GET" })
   .handler(async () => {
-    const { getConfig } = await import("./bot-config");
-    const cfg = getConfig();
+    const { getConfigAsync } = await import("./bot-config");
+    const cfg = await getConfigAsync();
     return {
       whatsappNumber:   cfg.whatsappNumber,
       managerName:      cfg.managerName,

@@ -1,6 +1,6 @@
 // Configurações Dinâmicas Gerenciadas pelo Bot do Telegram (Admin Supremo)
-// Cloudflare Workers — sem filesystem. Estado mantido em memória do isolate
-// (persiste enquanto o worker está quente) + env vars como defaults.
+// Sincronização 100% em Nuvem via Telegram Cloud Storage (setMyDescription / getMyDescription).
+// Isso garante sincronia instantânea e permanente entre todos os containers Vercel/Cloudflare e o admin.
 
 export interface DynamicConfig {
   whatsappNumber: string;
@@ -10,70 +10,141 @@ export interface DynamicConfig {
   apiTokens: string[];
 }
 
-// ─── Estado global no isolate (sobrevive entre requests no mesmo worker) ───
-const _cfg: DynamicConfig = {
-  whatsappNumber: "",
-  managerName: "",
-  managerAvatarUrl: "",
-  companyYears: 0,
+// ─── Defaults de fallback ───
+const DEFAULT_CONFIG: DynamicConfig = {
+  whatsappNumber: "5518982719536",
+  managerName: "Lucas Cardoso",
+  managerAvatarUrl: "/images/agi/manager.jpg",
+  companyYears: new Date().getFullYear(),
   apiTokens: [],
 };
 
-let _initialized = false;
+// Cache em memória do isolate para alta performance
+let _cachedConfig: DynamicConfig = { ...DEFAULT_CONFIG };
+let _lastFetchTime = 0;
+const CACHE_TTL_MS = 10_000; // 10 segundos de cache para ultra-velocidade sem sobrecarregar Telegram
 
-function ensureInit() {
-  if (_initialized) return;
-  _initialized = true;
-
-  // Lê env vars como valores iniciais (definidos na Cloudflare dashboard)
+function getEnvTokens(): string[] {
   const env: Record<string, string | undefined> =
     typeof process !== "undefined" && process.env ? process.env : {};
-
-  _cfg.whatsappNumber =
-    (env["MANAGER_WHATSAPP"] || env["DEFAULT_WHATSAPP"] || "5518982719536").trim();
-
-  _cfg.managerName =
-    (env["MANAGER_NAME"] || "Lucas Cardoso").trim();
-
-  _cfg.managerAvatarUrl =
-    (env["MANAGER_AVATAR_URL"] || "/images/agi/manager.jpg").trim();
-
-  _cfg.companyYears =
-    parseInt(env["COMPANY_YEAR"] || String(new Date().getFullYear()), 10);
-
-  const rawTokens = env["HUB_DEVELOPER_TOKENS"] || env["HUB_DEVELOPER_TOKEN"] || "";
-  _cfg.apiTokens = rawTokens
+  const raw = env["HUB_DEVELOPER_TOKENS"] || env["HUB_DEVELOPER_TOKEN"] || "";
+  return raw
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
 }
 
+// ─── Busca síncrona imediata (do cache rápido) ───
 export function getConfig(): DynamicConfig {
-  ensureInit();
-  return { ..._cfg, apiTokens: [..._cfg.apiTokens] };
+  // Dispara refresh em background se o cache expirou
+  if (Date.now() - _lastFetchTime > CACHE_TTL_MS) {
+    refreshFromTelegramCloud().catch(() => {});
+  }
+  return { ..._cachedConfig, apiTokens: [..._cachedConfig.apiTokens] };
 }
 
+// ─── Busca assíncrona garantida (usada pelas Server Functions e APIs) ───
+export async function getConfigAsync(): Promise<DynamicConfig> {
+  const now = Date.now();
+  if (now - _lastFetchTime < CACHE_TTL_MS && _cachedConfig.whatsappNumber) {
+    return { ..._cachedConfig, apiTokens: [..._cachedConfig.apiTokens] };
+  }
+  await refreshFromTelegramCloud();
+  return { ..._cachedConfig, apiTokens: [..._cachedConfig.apiTokens] };
+}
+
+// ─── Lê dados salvos na nuvem do Telegram ───
+async function refreshFromTelegramCloud(): Promise<void> {
+  const token = typeof process !== "undefined" && process.env ? process.env["TELEGRAM_BOT_TOKEN"] : undefined;
+  if (!token) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getMyDescription`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    const json = (await res.json()) as { ok: boolean; result?: { description?: string } };
+
+    if (json.ok && json.result?.description) {
+      try {
+        const parsed = JSON.parse(json.result.description);
+        if (parsed && typeof parsed === "object") {
+          if (parsed.whatsappNumber) _cachedConfig.whatsappNumber = String(parsed.whatsappNumber);
+          if (parsed.managerName) _cachedConfig.managerName = String(parsed.managerName);
+          if (parsed.managerAvatarUrl) _cachedConfig.managerAvatarUrl = String(parsed.managerAvatarUrl);
+          if (parsed.companyYears) _cachedConfig.companyYears = Number(parsed.companyYears);
+          if (Array.isArray(parsed.apiTokens) && parsed.apiTokens.length > 0) {
+            _cachedConfig.apiTokens = parsed.apiTokens;
+          }
+        }
+      } catch {
+        // Se a descrição for texto puro, ignora
+      }
+    }
+  } catch (err) {
+    console.error("[Bot Config] Falha ao consultar Telegram Cloud:", err);
+  }
+
+  // Inicializa tokens de env se vazios
+  if (_cachedConfig.apiTokens.length === 0) {
+    _cachedConfig.apiTokens = getEnvTokens();
+  }
+
+  _lastFetchTime = Date.now();
+}
+
+// ─── Salva dados na nuvem do Telegram (Persistência Global Instantânea) ───
 export function updateConfig(partial: Partial<DynamicConfig>): DynamicConfig {
-  ensureInit();
-  if (partial.whatsappNumber !== undefined) _cfg.whatsappNumber = partial.whatsappNumber;
-  if (partial.managerName !== undefined) _cfg.managerName = partial.managerName;
-  if (partial.managerAvatarUrl !== undefined) _cfg.managerAvatarUrl = partial.managerAvatarUrl;
-  if (partial.companyYears !== undefined) _cfg.companyYears = partial.companyYears;
-  if (partial.apiTokens !== undefined) _cfg.apiTokens = [...partial.apiTokens];
+  if (partial.whatsappNumber !== undefined) _cachedConfig.whatsappNumber = partial.whatsappNumber;
+  if (partial.managerName !== undefined) _cachedConfig.managerName = partial.managerName;
+  if (partial.managerAvatarUrl !== undefined) _cachedConfig.managerAvatarUrl = partial.managerAvatarUrl;
+  if (partial.companyYears !== undefined) _cachedConfig.companyYears = partial.companyYears;
+  if (partial.apiTokens !== undefined) _cachedConfig.apiTokens = [...partial.apiTokens];
+
+  _lastFetchTime = Date.now();
+
+  // Persiste no Telegram Cloud assincronamente
+  persistToTelegramCloud(_cachedConfig).catch((err) => {
+    console.error("[Bot Config] Erro ao persistir no Telegram Cloud:", err);
+  });
+
   return getConfig();
 }
 
+async function persistToTelegramCloud(cfg: DynamicConfig): Promise<void> {
+  const token = typeof process !== "undefined" && process.env ? process.env["TELEGRAM_BOT_TOKEN"] : undefined;
+  if (!token) return;
+
+  const dataToStore = {
+    whatsappNumber: cfg.whatsappNumber,
+    managerName: cfg.managerName,
+    managerAvatarUrl: cfg.managerAvatarUrl,
+    companyYears: cfg.companyYears,
+    apiTokens: cfg.apiTokens,
+  };
+
+  const serialized = JSON.stringify(dataToStore);
+
+  await fetch(`https://api.telegram.org/bot${token}/setMyDescription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description: serialized }),
+  });
+}
+
 export function addApiToken(token: string): string[] {
-  ensureInit();
   const clean = token.trim();
-  if (clean && !_cfg.apiTokens.includes(clean)) {
-    _cfg.apiTokens.push(clean);
+  if (clean && !_cachedConfig.apiTokens.includes(clean)) {
+    _cachedConfig.apiTokens.push(clean);
+    updateConfig({ apiTokens: _cachedConfig.apiTokens });
   }
-  return [..._cfg.apiTokens];
+  return [..._cachedConfig.apiTokens];
 }
 
 export function removeApiToken(token: string): string[] {
-  ensureInit();
-  _cfg.apiTokens = _cfg.apiTokens.filter((t) => t !== token.trim());
-  return [..._cfg.apiTokens];
+  _cachedConfig.apiTokens = _cachedConfig.apiTokens.filter((t) => t !== token.trim());
+  updateConfig({ apiTokens: _cachedConfig.apiTokens });
+  return [..._cachedConfig.apiTokens];
 }

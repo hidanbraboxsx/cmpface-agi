@@ -66,7 +66,7 @@ function renderManagerPreviewText(cfg: ReturnType<typeof getConfig>): string {
     `<i>"Olá! Vou cuidar pessoalmente da sua proposta de <b>${brl(sampleAmount)}</b>, da conferência dos documentos até a liberação do valor."</i>`,
     ``,
     `🛡️ <b>Protocolo Gerado:</b> <code>${sampleProtocol}</code>`,
-    `📲 <b>Botão de Ação do Lead:</b> [Falar com ${cfg.managerName} no WhatsApp]`,
+    `📲 <b>Botão de Ação do Lead:</b> [🟢 Ir para Atendimento]`,
     `🔗 <b>Link Direto de Redirecionamento:</b> <code>${waUrl}</code>`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
   ].join("\n");
