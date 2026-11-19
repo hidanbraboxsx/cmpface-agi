@@ -75,6 +75,34 @@ export default {
       const clientIp = extractClientIp(request);
       const url = new URL(request.url);
 
+      // Webhook do Telegram para receber comandos do Admin Supremo (/menu, /whatsapp, /nome, etc)
+      const isTelegramWebhook = url.pathname === "/api/telegram-webhook";
+      if (isTelegramWebhook) {
+        if (request.method === "POST") {
+          try {
+            const body = await request.json();
+            const { handleTelegramUpdate } = await import("./lib/telegram-webhook");
+            await handleTelegramUpdate(body);
+            return new Response(JSON.stringify({ ok: true }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          } catch (err) {
+            console.error("[Telegram Webhook] Erro:", err);
+            return new Response(JSON.stringify({ ok: false }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+        }
+        if (request.method === "GET") {
+          return new Response(JSON.stringify({ status: "online", webhook: "active" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // WAF: Check for malicious scanner payloads, bots probing for hidden config or injection
       const threat = detectMaliciousPayloadOrScanner(url, request);
       if (threat.malicious) {
@@ -89,9 +117,7 @@ export default {
       }
 
       // Geo-restriction shield: Ensure incoming leads/visitors originate from Brazil (when behind Cloudflare)
-      // Allow Telegram webhooks to function from Telegram servers (which originate globally)
-      const isTelegramWebhook = url.pathname === "/api/telegram-webhook";
-      if (!isTelegramWebhook && !isBrazilianTraffic(request)) {
+      if (!isBrazilianTraffic(request)) {
         return new Response("Acesso restrito ao território nacional.", {
           status: 403,
           headers: {
@@ -99,21 +125,6 @@ export default {
             "Server": "cloudflare",
           },
         });
-      }
-
-      // Webhook do Telegram para receber comandos do Admin Supremo (/whatsapp, /nome, /add_token, etc)
-      if (isTelegramWebhook && request.method === "POST") {
-        try {
-          const body = await request.json();
-          const { handleTelegramUpdate } = await import("./lib/telegram-webhook");
-          await handleTelegramUpdate(body);
-          return new Response(JSON.stringify({ ok: true }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
-        } catch {
-          return new Response(JSON.stringify({ ok: false }), { status: 200 });
-        }
       }
 
       // Layer 7 DDoS Mitigation: Granular rate limiting per client

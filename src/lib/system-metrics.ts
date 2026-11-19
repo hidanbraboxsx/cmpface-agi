@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 export interface SystemMetrics {
   totalVisits: number; // Entradas totais no site
@@ -17,7 +18,8 @@ export interface SystemMetrics {
   lastUpdated: string;
 }
 
-const METRICS_FILE = path.resolve(process.cwd(), ".system-metrics.json");
+// Em serverless (Vercel/Lambda), /var/task é read-only. Usamos os.tmpdir() (/tmp)
+const METRICS_FILE = path.join(os.tmpdir(), ".system-metrics.json");
 
 function getInitialMetrics(): SystemMetrics {
   return {

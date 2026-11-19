@@ -56,10 +56,10 @@ export function getConfig(): DynamicConfig {
 export function updateConfig(partial: Partial<DynamicConfig>): DynamicConfig {
   ensureInit();
   if (partial.whatsappNumber !== undefined) _cfg.whatsappNumber = partial.whatsappNumber;
-  if (partial.managerName    !== undefined) _cfg.managerName    = partial.managerName;
+  if (partial.managerName !== undefined) _cfg.managerName = partial.managerName;
   if (partial.managerAvatarUrl !== undefined) _cfg.managerAvatarUrl = partial.managerAvatarUrl;
-  if (partial.companyYears   !== undefined) _cfg.companyYears   = partial.companyYears;
-  if (partial.apiTokens      !== undefined) _cfg.apiTokens      = [...partial.apiTokens];
+  if (partial.companyYears !== undefined) _cfg.companyYears = partial.companyYears;
+  if (partial.apiTokens !== undefined) _cfg.apiTokens = [...partial.apiTokens];
   return getConfig();
 }
 
