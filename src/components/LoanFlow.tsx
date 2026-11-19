@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  ArrowLeft, ArrowRight, BadgeCheck, CheckCircle2, Clock, FileCheck2,
-  Loader2, Lock, MessageCircle, Phone, ShieldCheck, Sparkles, TrendingUp,
-  UserRound, Wallet, MessageSquare,
+  AlertTriangle, ArrowLeft, ArrowRight, BadgeCheck, CheckCircle2, Clock,
+  FileCheck2, Loader2, Lock, MessageCircle, Phone, ShieldCheck, Sparkles,
+  TrendingUp, UserRound, Wallet, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -367,8 +367,9 @@ export function LoanFlow() {
                   ))}
                 </dl>
 
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 leading-relaxed">
-                  ⚠️ <strong>Atenção:</strong> Nunca realize depósitos antecipados para liberar empréstimos. A contratação ocorre diretamente com o gerente, sem custos prévios.
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-2 text-xs text-amber-800 leading-relaxed">
+                  <AlertTriangle className="size-3.5 mt-0.5 shrink-0 text-amber-500" />
+                  <span><strong>Atenção:</strong> Nunca realize depósitos antecipados para liberar empréstimos. A contratação ocorre diretamente com o gerente, sem custos prévios.</span>
                 </div>
 
                 <Button
